@@ -42,8 +42,8 @@ app.config.from_pyfile("config.py")
 app.config["MAIL_SERVER"] = env_or_config(app, "MAIL_SERVER", "smtp.office365.com")
 app.config["MAIL_PORT"] = int(env_or_config(app, "MAIL_PORT", 587))
 app.config["MAIL_USE_TLS"] = str(env_or_config(app, "MAIL_USE_TLS", "true")).lower() in {"1", "true", "yes"}
-app.config["MAIL_USERNAME"] = env_or_config(app, "MAIL_USERNAME", "")
-app.config["MAIL_PASSWORD"] = env_or_config(app, "MAIL_PASSWORD", "")
+app.config["MAIL_USERNAME"] = env_or_config(app, "MAIL_USERNAME", "support@atikes.com")
+app.config["MAIL_PASSWORD"] = env_or_config(app, "MAIL_PASSWORD", "*6kF#pP9@vR2n!LqT9")
 mail_default_sender = env_or_config(app, "MAIL_DEFAULT_SENDER", "")
 app.config["MAIL_DEFAULT_SENDER"] = mail_default_sender or app.config["MAIL_USERNAME"] or None
 app.config["APP_BASE_URL"] = env_or_config(app, "APP_BASE_URL", None)

@@ -326,5 +326,5 @@ def health_db():
 # ----------------- RUN -----------------
 if __name__ == "__main__":
     #debug_mode = str(env_or_config(app, "FLASK_DEBUG", "false")).lower() in {"1", "true", "yes"}
-    app.run(host="0.0.0.0", port=5051)
+    app.run(host="0.0.0.0", port=5050)
 

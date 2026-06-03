@@ -1,0 +1,51 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Reimbursement Controls</p>
+        <h2 class="fw-bold mb-1">Reimbursement Settings</h2>
+        <p class="text-muted mb-0">Control how claims route for approval and how attachments behave across the organization.</p>
+    </div>
+</div>
+
+<form method="POST" class="section-card">
+    <div class="row g-4">
+        <div class="col-md-6">
+            <label class="form-label">Approver Mode</label>
+            <select class="form-select" name="approver_mode">
+                <option value="reporting_manager" {% if config.approver_mode == 'reporting_manager' %}selected{% endif %}>Reporting Manager</option>
+                <option value="fixed_approver" {% if config.approver_mode == 'fixed_approver' %}selected{% endif %}>Fixed Approver</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Fixed Approver User</label>
+            <select class="form-select" name="fixed_approver_user_id">
+                <option value="">Choose only for fixed approver mode</option>
+                {% for user in approver_users %}
+                <option value="{{ user.id }}" {% if config.fixed_approver_user_id == user.id %}selected{% endif %}>
+                    {{ user.display_name or user.email }} ({{ user.email }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Allow Partial Approval</label>
+            <select class="form-select" name="allow_partial_approval">
+                <option value="true" {% if config.allow_partial_approval %}selected{% endif %}>Yes</option>
+                <option value="false" {% if not config.allow_partial_approval %}selected{% endif %}>No</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Allow Multiple Attachments</label>
+            <select class="form-select" name="allow_multiple_attachments">
+                <option value="true" {% if config.allow_multiple_attachments %}selected{% endif %}>Yes</option>
+                <option value="false" {% if not config.allow_multiple_attachments %}selected{% endif %}>No</option>
+            </select>
+        </div>
+    </div>
+    <div class="modal-footer-strip mt-4">
+        <p class="modal-footer-copy">These settings affect only the new reimbursement workflow and do not change existing leave or payroll modules.</p>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </div>
+</form>
+{% endblock %}

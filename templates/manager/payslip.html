@@ -1,47 +1,26 @@
 {% extends "manager/manager_base.html" %}
 {% block content %}
 
-<div class="container mt-4">
-    <h3 class="fw-bold mb-3">Download Payslip</h3>
-
-    <!-- ================= Flash Messages ================= -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <form method="POST"
-                  action="{{ url_for('manager_payroll.download_payslip') }}">
-
-                <div class="row g-3 align-items-end">
-
-                    <div class="col-md-6">
-                        <label class="form-label">Payroll Month</label>
-                        <input type="month"
-                               name="pay_month"
-                               class="form-control"
-                               required>
-                    </div>
-
-                    <div class="col-md-6">
-                        <button class="btn btn-primary w-100 mt-4">
-                            Download Payslip
-                        </button>
-                    </div>
-
-                </div>
-
-            </form>
-        </div>
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Payroll Documents</p>
+        <h3 class="fw-bold mb-1">Download Payslip</h3>
+        <p class="text-muted mb-0">Select a payroll month to generate and download your payslip PDF.</p>
     </div>
+</div>
+
+<div class="section-card">
+    <form method="POST" action="{{ url_for('manager_payroll.download_payslip') }}">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label">Payroll Month</label>
+                <input type="month" name="pay_month" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+                <button class="btn btn-primary w-100">Download Payslip</button>
+            </div>
+        </div>
+    </form>
 </div>
 
 {% endblock %}

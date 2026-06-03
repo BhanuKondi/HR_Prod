@@ -1,0 +1,87 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+  <div>
+    <p class="eyebrow mb-2">Revision Detail</p>
+    <h2 class="fw-bold mb-1">{{ revision.revision_no }}</h2>
+    <p class="text-muted mb-0">Status: {{ revision.status.replace('_', ' ').title() }} | Effective: {{ revision.effective_from.strftime('%b %Y') }}</p>
+  </div>
+</div>
+
+<div class="section-card mb-3">
+  <div class="row g-3">
+    <div class="col-md-6"><label class="form-label">Employee</label><input class="form-control" readonly value="{{ revision.employee.emp_code }} - {{ revision.employee.first_name }} {{ revision.employee.last_name }}"></div>
+    <div class="col-md-6"><label class="form-label">Approver</label><input class="form-control" readonly value="{{ revision.approver.display_name or revision.approver.email if revision.approver else '-' }}"></div>
+    <div class="col-12"><label class="form-label">Reason</label><textarea class="form-control" rows="3" readonly>{{ revision.reason }}</textarea></div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="section-card h-100">
+      <h6>Current Salary</h6>
+      <pre class="mb-0">{{ revision.current_salary_json }}</pre>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="section-card h-100">
+      <h6>Proposed Salary</h6>
+      <pre class="mb-0">{{ revision.proposed_salary_json }}</pre>
+    </div>
+  </div>
+</div>
+
+{% if can_review %}
+<div class="section-card mb-3">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <form method="POST" action="{{ url_for('admin_salary_revisions.approve_revision', revision_id=revision.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="form-label">Approval Comments (Optional)</label>
+        <textarea name="comments" class="form-control mb-2" rows="2"></textarea>
+        <button class="btn btn-success" type="submit">Approve</button>
+      </form>
+    </div>
+    <div class="col-md-6">
+      <form method="POST" action="{{ url_for('admin_salary_revisions.reject_revision', revision_id=revision.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="form-label">Rejection Comments (Required)</label>
+        <textarea name="comments" class="form-control mb-2" rows="2" required></textarea>
+        <button class="btn btn-danger" type="submit">Reject</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if can_apply %}
+<div class="section-card mb-3">
+  <form method="POST" action="{{ url_for('admin_salary_revisions.apply_revision', revision_id=revision.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-primary" type="submit">Apply Revision To Active Salary</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="section-card">
+  <h6 class="mb-3">Action Timeline</h6>
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-light"><tr><th>When</th><th>By</th><th>Action</th><th>Transition</th><th>Comments</th></tr></thead>
+      <tbody>
+        {% for action in revision.actions|sort(attribute='created_at') %}
+        <tr>
+          <td>{{ action.created_at.strftime('%d %b %Y %H:%M') if action.created_at else '-' }}</td>
+          <td>{{ action.action_by.display_name or action.action_by.email if action.action_by else '-' }}</td>
+          <td>{{ action.action_type.replace('_', ' ').title() }}</td>
+          <td>{{ action.from_status or '-' }} → {{ action.to_status }}</td>
+          <td>{{ action.comments or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted">No actions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

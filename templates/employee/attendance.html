@@ -1,78 +1,94 @@
 {% extends "employee/employee_base.html" %}
- 
+
 {% block content %}
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="fw-bold">Attendance Dashboard</h2>
+<div class="workspace-hero">
+  <div class="data-toolbar">
+    <div>
+      <p class="eyebrow mb-2">Attendance Workspace</p>
+      <h2 class="fw-bold mb-1">Attendance Dashboard</h2>
+      <p class="text-muted mb-0">Clock in, clock out, and review your shift history with a cleaner daily view.</p>
+    </div>
     <div class="text-end">
-      <div id="digitalClock" class="h3 text-primary"></div>
+      <div id="digitalClock" class="h3 text-primary mb-0"></div>
       <div class="small text-muted" id="todayDate"></div>
     </div>
   </div>
- 
-  <!-- Attendance Card -->
-  <div class="card shadow p-4 mb-3">
-    <div class="d-flex justify-content-between align-items-center">
- 
-      <!-- Buttons -->
-      <div>
-        <button id="clockInBtn" class="btn btn-success btn-lg px-4 me-3">Clock In</button>
-        <button id="clockOutBtn" class="btn btn-danger btn-lg px-4">Clock Out</button>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-5">
+    <div class="section-card h-100">
+      <p class="eyebrow mb-2">Today's Session</p>
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div id="attendanceStatePill" class="status-pill info">Checking status...</div>
+        <div class="small text-muted fw-semibold" id="attendanceLastAction">No activity yet today</div>
       </div>
- 
-      <!-- Worked Time Section -->
-      <div class="text-center d-flex gap-5 justify-content-center align-items-center">
-        <div>
-          <small class="text-muted">Current Session Time</small>
-          <h1 id="sessionTime" class="fw-bold text-success">00:00:00</h1>
+      <div class="d-grid gap-3">
+        <div class="compact-stat">
+          <span class="label">Current Session Time</span>
+          <span class="value text-success" id="sessionTime">00:00:00</span>
         </div>
-        <div>
-          <small class="text-muted">Total Worked Today</small>
-          <h1 id="totalWorkedTime" class="fw-bold text-primary">00:00:00</h1>
+        <div class="compact-stat">
+          <span class="label">Total Worked Today</span>
+          <span class="value text-primary" id="totalWorkedTime">00:00:00</span>
+          <span class="meta" id="todaySessionCount">0 sessions today</span>
         </div>
       </div>
-      <div id="statusMessage" class="mt-2 text-info"></div>
+      <div class="d-flex gap-3 flex-wrap mt-4">
+        <button id="clockInBtn" class="btn btn-success flex-fill">Clock In</button>
+        <button id="clockOutBtn" class="btn btn-danger flex-fill">Clock Out</button>
+      </div>
+      <div id="statusMessage" class="login-note info mt-3 mb-0">Checking attendance status...</div>
     </div>
   </div>
- 
-  <!-- Transactions Card -->
-  <div class="card p-3 shadow-sm">
-    <h5>Today's Transactions</h5>
- 
-    <!-- DATE FILTER -->
-    <div class="d-flex gap-2 mb-3 align-items-center">
-      <label class="mb-0 fw-semibold">From:</label>
-      <input type="date" id="fromDate" class="form-control form-control-sm">
- 
-      <label class="mb-0 fw-semibold">To:</label>
-      <input type="date" id="toDate" class="form-control form-control-sm">
- 
-      <button id="rangeFilterBtn" class="btn btn-secondary btn-sm">Filter</button>
-    </div>
- 
-    <div class="table-responsive">
-      <table class="table table-striped table-bordered table-sm" id="txnTable">
-        <thead class="table-light">
-          <tr>
-            <th>Date</th>
-            <th>Clock In</th>
-            <th>Clock Out</th>
-            <th>Total Duration</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+
+  <div class="col-xl-7">
+    <div class="section-card h-100">
+      <div class="data-toolbar">
+        <div>
+          <h5 class="mb-1">Transactions</h5>
+          <p class="text-muted mb-0">Filter a date range to review daily attendance durations.</p>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-5">
+          <label class="form-label">From</label>
+          <input type="date" id="fromDate" class="form-control">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">To</label>
+          <input type="date" id="toDate" class="form-control">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button id="rangeFilterBtn" class="btn btn-outline-primary w-100">Filter</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered table-sm" id="txnTable">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Clock In</th>
+              <th>Clock Out</th>
+              <th>Total Duration</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
- 
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
- 
+const csrfToken = "{{ csrf_token }}";
 let workTimerInterval = null;
 let previousWorkedSeconds = 0;
- 
-/* ---------------- DIGITAL CLOCK ---------------- */
+
 function updateDigitalClock() {
   const now = new Date();
   document.getElementById("digitalClock").innerText =
@@ -82,38 +98,48 @@ function updateDigitalClock() {
 }
 setInterval(updateDigitalClock, 1000);
 updateDigitalClock();
- 
-/* ---------------- BUTTON STATUS ---------------- */
+
+function setStatus(message, tone = "info") {
+  const node = document.getElementById("statusMessage");
+  node.className = `login-note ${tone} mt-3 mb-0`;
+  node.innerText = message;
+}
+
+function setAttendanceState(label, tone) {
+  const node = document.getElementById("attendanceStatePill");
+  node.className = `status-pill ${tone}`;
+  node.innerText = label;
+}
+
 async function setButtonsFromStatus() {
-  const res = await fetch("/attendance/status");
+  const res = await fetch("/employee/attendance/status");
   const data = await res.json();
   document.getElementById("clockInBtn").disabled = data.active;
   document.getElementById("clockOutBtn").disabled = !data.active;
 }
- 
-/* ---------------- TIMER ---------------- */
+
 function stopWorkTimer() {
   clearInterval(workTimerInterval);
   workTimerInterval = null;
 }
- 
+
 function startWorkTimer(clockInISO) {
   stopWorkTimer();
   const start = new Date(clockInISO);
- 
+
   function tick() {
     const now = new Date();
     const diff = Math.floor((now - start) / 1000);
     const total = diff + previousWorkedSeconds;
- 
+
     document.getElementById("sessionTime").innerText = formatHHMMSS(diff);
     document.getElementById("totalWorkedTime").innerText = formatHHMMSS(total);
   }
- 
+
   tick();
   workTimerInterval = setInterval(tick, 1000);
 }
- 
+
 function formatHHMMSS(sec) {
   sec = Number(sec) || 0;
   const h = String(Math.floor(sec / 3600)).padStart(2, "0");
@@ -121,140 +147,156 @@ function formatHHMMSS(sec) {
   const s = String(sec % 60).padStart(2, "0");
   return `${h}:${m}:${s}`;
 }
- 
-/* ---------------- DURATION FORMAT ---------------- */
+
 function formatDurationDetail(sec) {
   if (!Number.isFinite(Number(sec)) || sec <= 0) return "-";
- 
   sec = Number(sec);
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
- 
   return `${h}h ${m}m ${s}s`;
 }
- 
-/* ---------------- TODAY SUMMARY ---------------- */
+
 async function loadTodaySummary() {
-  const res = await fetch("/attendance/today-summary");
+  const res = await fetch("/employee/attendance/today-summary");
   const data = await res.json();
- 
+
   previousWorkedSeconds = Number(data.total_seconds) || 0;
   document.getElementById("totalWorkedTime").innerText =
     formatHHMMSS(previousWorkedSeconds);
- 
+  document.getElementById("todaySessionCount").innerText =
+    `${data.transactions?.length || 0} session${(data.transactions?.length || 0) === 1 ? "" : "s"} today`;
+
   const tbody = document.querySelector("#txnTable tbody");
   tbody.innerHTML = "";
- 
+
   if (!data.transactions || data.transactions.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="4" class="text-center text-muted">
+        <td colspan="5" class="text-center text-muted">
           No transactions today
         </td>
       </tr>`;
+    document.getElementById("attendanceLastAction").innerText = "No activity recorded today";
     return;
   }
- 
+
+  const latestTransaction = data.transactions[data.transactions.length - 1];
+  const lastAction = latestTransaction?.clock_out
+    ? `Last action: clocked out at ${latestTransaction.clock_out}`
+    : latestTransaction?.clock_in
+      ? `Last action: clocked in at ${latestTransaction.clock_in}`
+      : "No activity recorded today";
+  document.getElementById("attendanceLastAction").innerText = lastAction;
+
   data.transactions.forEach(tx => {
-   let durationSeconds = Number(tx.duration_seconds);
- 
- 
-    // ✅ FIX: calculate live duration if clock_out is missing
+    let durationSeconds = Number(tx.duration_seconds);
     if (!tx.clock_out && tx.clock_in) {
       const start = new Date(tx.clock_in);
       const now = new Date();
       durationSeconds = Math.floor((now - start) / 1000);
     }
- 
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${new Date().toLocaleDateString("en-IN")}</td>
       <td>${tx.clock_in || "-"}</td>
       <td>${tx.clock_out || "-"}</td>
       <td>${formatDurationDetail(durationSeconds)}</td>
+      <td>${tx.clock_out ? "Completed" : "Open Session"}</td>
     `;
     tbody.appendChild(tr);
   });
 }
- 
- 
-/* ---------------- CURRENT SESSION ---------------- */
+
 async function loadCurrentSession() {
-  const res = await fetch("/attendance/current");
+  const res = await fetch("/employee/attendance/current");
   const data = await res.json();
- 
+
   if (data.active) {
     startWorkTimer(data.clock_in);
-    document.getElementById("statusMessage").innerText =
-      "You are currently clocked in";
+    setStatus("You are currently clocked in.", "success");
+    setAttendanceState("Clocked In", "success");
   } else {
     stopWorkTimer();
     document.getElementById("sessionTime").innerText = "00:00:00";
-    document.getElementById("statusMessage").innerText =
-      "You are currently clocked out";
+    setStatus("You are currently clocked out.", "info");
+    setAttendanceState("Clocked Out", "info");
   }
 }
- 
-/* ---------------- BUTTON ACTIONS ---------------- */
+
 document.getElementById("clockInBtn").addEventListener("click", async () => {
-  await fetch("/attendance/clock_in", { method: "POST" });
+  const response = await fetch("/employee/attendance/clock_in", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken }
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    setStatus(data.error || "Clock in failed.", "danger");
+    return;
+  }
+  setStatus("Clocked in successfully.", "success");
   await loadTodaySummary();
   await loadCurrentSession();
   await setButtonsFromStatus();
 });
- 
+
 document.getElementById("clockOutBtn").addEventListener("click", async () => {
   stopWorkTimer();
-  await fetch("/attendance/clock_out", { method: "POST" });
+  const response = await fetch("/employee/attendance/clock_out", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken }
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    setStatus(data.error || "Clock out failed.", "danger");
+    return;
+  }
+  setStatus("Clocked out successfully.", "primary");
   await loadTodaySummary();
   await loadCurrentSession();
   await setButtonsFromStatus();
 });
- 
-/* ---------------- DATE RANGE FILTER ---------------- */
+
 document.getElementById("rangeFilterBtn").addEventListener("click", async () => {
   const fromDate = document.getElementById("fromDate").value;
   const toDate = document.getElementById("toDate").value;
- 
+
   if (!fromDate || !toDate) {
     alert("Please select both From and To dates");
     return;
   }
- 
-  const res = await fetch(
-    `/employee/attendance/from-to?from=${fromDate}&to=${toDate}`
-  );
+
+  const res = await fetch(`/employee/attendance/from-to?from=${fromDate}&to=${toDate}`);
   const data = await res.json();
- 
+
   const tbody = document.querySelector("#txnTable tbody");
   tbody.innerHTML = "";
- 
+
   if (!data.days || data.days.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="4" class="text-center text-muted">
+        <td colspan="5" class="text-center text-muted">
           No attendance records found for selected range
         </td>
       </tr>`;
     return;
   }
- 
+
   data.days.forEach(day => {
     const seconds = Number(day.total_seconds);
- 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${new Date(day.date).toLocaleDateString("en-IN")}</td>
       <td>${day.clock_in || "-"}</td>
       <td>${day.clock_out || "-"}</td>
       <td>${Number.isFinite(seconds) ? formatDurationDetail(seconds) : "-"}</td>
+      <td>${day.clock_out && day.clock_out !== "-" ? "Completed" : "Recorded"}</td>
     `;
     tbody.appendChild(tr);
   });
 });
- 
-/* ---------------- INIT ---------------- */
+
 (async function init() {
   await loadTodaySummary();
   await loadCurrentSession();
@@ -262,7 +304,5 @@ document.getElementById("rangeFilterBtn").addEventListener("click", async () => 
 })();
 });
 </script>
- 
+
 {% endblock %}
- 
- 

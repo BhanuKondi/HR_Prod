@@ -2,40 +2,52 @@
 {% block title %}My Leave Requests{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>My Leave Requests</h2>
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Leave History</p>
+        <h2 class="fw-bold mb-1">My Leave Requests</h2>
+        <p class="text-muted mb-0">Review your submitted leave requests and their current approval status.</p>
+    </div>
+</div>
 
-    <table class="table table-bordered mt-4">
-        <thead>
-            <tr>
-                <th>S.No</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Days</th>
-                <th>Reason</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for req in leaves %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ req.start_date }}</td>
-                <td>{{ req.end_date }}</td>
-                <td>{{ req.total_days }}</td>
-                <td>{{ req.reason }}</td>
-                <td>
-                    {% if req.status == 'Pending' %}
-                        <span class="badge bg-warning text-dark">Pending</span>
-                    {% elif req.status == 'Approved' %}
-                        <span class="badge bg-success">Approved</span>
-                    {% else %}
-                        <span class="badge bg-danger">Rejected</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-bordered mt-4">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Days</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in leaves %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ req.start_date }}</td>
+                    <td>{{ req.end_date }}</td>
+                    <td>{{ req.total_days }}</td>
+                    <td>{{ req.reason }}</td>
+                    <td>
+                        {% if req.status == 'Pending' %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% elif req.status == 'Approved' %}
+                            <span class="badge bg-success">Approved</span>
+                        {% else %}
+                            <span class="badge bg-danger">Rejected</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No leave requests found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

@@ -1,30 +1,48 @@
-<h2>Pending Leave Requests</h2>
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Approval Queue</p>
+        <h2 class="fw-bold mb-1">Pending Leave Requests</h2>
+        <p class="text-muted mb-0">Review requests that still need an HR decision.</p>
+    </div>
+</div>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Emp Code</th>
-            <th>Name</th>
-            <th>Dates</th>
-            <th>Total Days</th>
-            <th>Reason</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-
-    <tbody>
-        {% for r in requests %}
-        <tr>
-            <td>{{ r.employee.emp_code }}</td>
-            <td>{{ r.employee.first_name }} {{ r.employee.last_name }}</td>
-            <td>{{ r.start_date }} - {{ r.end_date }}</td>
-            <td>{{ r.total_days }}</td>
-            <td>{{ r.reason }}</td>
-            <td>
-                <a href="{{ url_for('admin.approve_leave', id=r.id) }}" class="btn btn-success btn-sm">Approve</a>
-                <a href="{{ url_for('admin.reject_leave', id=r.id) }}" class="btn btn-danger btn-sm">Reject</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Emp Code</th>
+                    <th>Name</th>
+                    <th>Dates</th>
+                    <th>Total Days</th>
+                    <th>Reason</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in requests %}
+                <tr>
+                    <td>{{ r.employee.emp_code }}</td>
+                    <td>{{ r.employee.first_name }} {{ r.employee.last_name }}</td>
+                    <td>{{ r.start_date }} - {{ r.end_date }}</td>
+                    <td>{{ r.total_days }}</td>
+                    <td>{{ r.reason }}</td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('admin.approve_leave', id=r.id) }}" class="btn btn-success btn-sm">Approve</a>
+                            <a href="{{ url_for('admin.reject_leave', id=r.id) }}" class="btn btn-danger btn-sm">Reject</a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No pending leave requests.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

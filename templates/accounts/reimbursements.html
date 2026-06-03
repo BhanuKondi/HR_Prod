@@ -1,0 +1,48 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Finance Queue</p>
+            <h2 class="fw-bold mb-1">Reimbursement Reviews</h2>
+            <p class="text-muted mb-0">Validate approved claims, capture finance comments, and release payments cleanly.</p>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Pending Finance</span><strong>{{ summary.pending }}</strong></div>
+        <div class="hero-metric"><span>Ready To Pay</span><strong>{{ summary.ready_to_pay }}</strong></div>
+        <div class="hero-metric"><span>Paid</span><strong>{{ summary.paid }}</strong></div>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Request</th>
+                    <th>Employee</th>
+                    <th>Requested</th>
+                    <th>Manager Approved</th>
+                    <th>Status</th>
+                    <th width="180">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reimbursement in reimbursements %}
+                <tr>
+                    <td>{{ reimbursement.request_no }}</td>
+                    <td>{{ reimbursement.employee.first_name }} {{ reimbursement.employee.last_name }}</td>
+                    <td>{{ "%.2f"|format(reimbursement.requested_amount or 0) }}</td>
+                    <td>{{ "%.2f"|format(reimbursement.manager_approved_amount or 0) }}</td>
+                    <td><span class="badge bg-light text-dark">{{ reimbursement.status.replace("_", " ").title() }}</span></td>
+                    <td><a href="{{ url_for('account_reimbursements.view_reimbursement', request_id=reimbursement.id) }}" class="btn btn-sm btn-primary">Open Review</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No reimbursement items available in finance right now.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

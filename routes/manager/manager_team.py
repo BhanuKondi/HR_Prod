@@ -3,10 +3,16 @@ from datetime import datetime, date, timedelta
 from models.models import Employee, User
 from models.attendance import Attendance
 from zoneinfo import ZoneInfo
+from utils.authz import ROLE_MANAGER, require_roles
 
 IST = ZoneInfo("Asia/Kolkata")
 
 manager_team_bp = Blueprint("manager_team_bp", __name__, url_prefix="/manager/team")
+
+
+@manager_team_bp.before_request
+def enforce_manager_role():
+    return require_roles(ROLE_MANAGER)
 
 # ---------------- Helper ----------------
 def fmt_seconds(sec):
@@ -15,6 +21,13 @@ def fmt_seconds(sec):
     m = (sec % 3600) // 60
     s = sec % 60
     return f"{h:02}:{m:02}:{s:02}"
+
+
+def get_manager_employee():
+    manager_user_id = session.get("user_id")
+    if not manager_user_id:
+        return None
+    return Employee.query.filter_by(user_id=manager_user_id).first()
 
 # ---------------- TEAM PAGE ----------------
 @manager_team_bp.route("/")
@@ -25,11 +38,7 @@ def team_page():
 # ---------------- LIST TODAY ----------------
 @manager_team_bp.route("/list_today")
 def list_today():
-    manager_user_id = session.get("user_id")
-    if not manager_user_id:
-        return jsonify([])
-
-    manager = Employee.query.filter_by(user_id=manager_user_id).first()
+    manager = get_manager_employee()
     if not manager:
         return jsonify([])
 
@@ -88,9 +97,15 @@ def attendance_detail(user_id):
     except ValueError:
         return jsonify({"error": "Invalid date format"}), 400
 
+    manager = get_manager_employee()
+    if not manager:
+        return jsonify({"error": "Manager not found"}), 403
+
     emp = Employee.query.filter_by(user_id=user_id).first()
     if not emp:
         return jsonify({"error": "Employee not found"}), 404
+    if emp.manager_emp_id != manager.id:
+        return jsonify({"error": "Not authorized"}), 403
 
     records = Attendance.query.filter_by(user_id=user_id, date=dt).order_by(Attendance.clock_in).all()
     transactions = []
@@ -123,9 +138,15 @@ def attendance_detail(user_id):
 # ---------------- MONTHLY SUMMARY ----------------
 @manager_team_bp.route("/monthly/<int:user_id>/<int:year>/<int:month>")
 def monthly_summary(user_id, year, month):
+    manager = get_manager_employee()
+    if not manager:
+        return jsonify({"error": "Manager not found"}), 403
+
     emp = Employee.query.filter_by(user_id=user_id).first()
     if not emp:
         return jsonify({"error": "Employee not found"}), 404
+    if emp.manager_emp_id != manager.id:
+        return jsonify({"error": "Not authorized"}), 403
 
     first_day = date(year, month, 1)
     next_month = (first_day.replace(day=28) + timedelta(days=4)).replace(day=1)

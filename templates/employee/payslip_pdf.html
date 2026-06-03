@@ -148,8 +148,8 @@
             <tr>
                 <td>Fixed Allowance</td>
                 <td class="text-right">{{ fixed_allowance }}</td>
-                <td></td>
-                <td></td>
+                <td>Loan EMI Deduction</td>
+                <td class="text-right">{{ "%.2f"|format(loan_deduction or 0) }}</td>
             </tr>
 
             {% if bonus > 0 or deduction > 0 %}
@@ -177,7 +177,7 @@
                 <td class="text-right">{{ "%.2f"|format(gross_salary) }}</td>
                 <td>Total Deductions</td>
                 <td class="text-right">
-                    {{ "%.2f"|format((lwp_deduction or 0) + (deduction or 0)) }}
+                    {{ "%.2f"|format((lwp_deduction or 0) + (deduction or 0) + (loan_deduction or 0)) }}
                 </td>
             </tr>
 
@@ -187,6 +187,27 @@
             </tr>
         </tbody>
     </table>
+
+    <!-- REMARKS -->
+    {% if loan_breakdown %}
+    <div class="section-title mt-3">Loan Repayment Details</div>
+    <table class="mb-4">
+        <tr>
+            <th>Loan No</th>
+            <th>Installment</th>
+            <th class="text-right">Deducted (₹)</th>
+            <th class="text-right">Remaining After This (₹)</th>
+        </tr>
+        {% for item in loan_breakdown %}
+        <tr>
+            <td>{{ item.loan_no }}</td>
+            <td>{{ item.installment_number }}/{{ item.total_installments }}</td>
+            <td class="text-right">{{ "%.2f"|format(item.amount or 0) }}</td>
+            <td class="text-right">{{ "%.2f"|format(item.remaining_after_this or 0) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
 
     <!-- REMARKS -->
     {% if comment %}

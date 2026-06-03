@@ -1,0 +1,56 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Employee Loans</p>
+            <h2 class="fw-bold mb-1">My Loan Requests</h2>
+            <p class="text-muted mb-0">Request salary advances or employee loans, track approvals, and monitor repayments from one place.</p>
+        </div>
+        {% if employee %}
+        <a href="{{ url_for('employee_loans.new_loan') }}" class="btn btn-primary">Request Loan</a>
+        {% endif %}
+    </div>
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Draft</span><strong>{{ summary.draft }}</strong></div>
+        <div class="hero-metric"><span>Pending</span><strong>{{ summary.pending }}</strong></div>
+        <div class="hero-metric"><span>Active</span><strong>{{ summary.active }}</strong></div>
+        <div class="hero-metric"><span>Completed</span><strong>{{ summary.completed }}</strong></div>
+    </div>
+</div>
+
+{% if employee %}
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Loan No</th>
+                    <th>Requested Amount</th>
+                    <th>Installments</th>
+                    <th>Monthly EMI</th>
+                    <th>Status</th>
+                    <th>Approver</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in loans %}
+                <tr>
+                    <td>{{ loan.loan_no }}</td>
+                    <td>{{ "%.2f"|format(loan.requested_amount or 0) }}</td>
+                    <td>{{ loan.total_installments }}</td>
+                    <td>{{ "%.2f"|format(loan.monthly_installment or 0) }}</td>
+                    <td>{{ loan.status.replace("_", " ").title() }}</td>
+                    <td>{{ loan.approver.display_name or loan.approver.email if loan.approver else "-" }}</td>
+                    <td><a href="{{ url_for('employee_loans.view_loan', loan_id=loan.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No loan requests yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

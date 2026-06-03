@@ -1,11 +1,8 @@
-from flask import (
-    Blueprint, render_template, session,
-    redirect, jsonify, request
-)
-from models.models import Employee
+from flask import Blueprint, jsonify, redirect, render_template, request
 from models.attendance import Attendance, IST
 from models.db import db
 from datetime import datetime, timedelta
+from utils.authz import ROLE_EMPLOYEE, get_current_employee, require_roles
  
 # ================= SHIFT CONFIG =================
 SHIFT_START_HOUR = 7  # 7 AM
@@ -17,6 +14,11 @@ employee_attendance_bp = Blueprint(
     __name__,
     url_prefix="/employee/attendance"
 )
+
+
+@employee_attendance_bp.before_request
+def enforce_employee_role():
+    return require_roles(ROLE_EMPLOYEE)
  
 # --------------------------------------------------
 # Helper: convert aware → naive IST (IMPORTANT)
@@ -32,10 +34,7 @@ def to_naive_ist(dt):
 # Helper: current logged-in employee
 # --------------------------------------------------
 def current_employee():
-    user_id = session.get("user_id")
-    if not user_id:
-        return None
-    return Employee.query.filter_by(user_id=user_id).first()
+    return get_current_employee()
  
 # --------------------------------------------------
 # Helper: shift date (7 AM → 7 AM)
@@ -76,7 +75,7 @@ def auto_clock_out_after_shift(user_id):
 def attendance_page():
     emp = current_employee()
     if not emp:
-        return redirect("/login")
+        return redirect("/logout")
  
     auto_clock_out_after_shift(emp.user_id)
     return render_template("employee/attendance.html", employee=emp)
@@ -183,7 +182,13 @@ def clock_in():
     ).first()
  
     if active:
-        return jsonify({"error": "Already clocked in"}), 400
+        return jsonify({
+            "success": True,
+            "message": "Already clocked in",
+            "log_id": active.id,
+            "active": True,
+            "clock_in": active.clock_in.isoformat() if active.clock_in else None,
+        }), 200
  
     count = Attendance.query.filter_by(
         user_id=emp.user_id,

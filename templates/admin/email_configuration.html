@@ -1,0 +1,55 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Platform Settings</p>
+        <h2 class="fw-bold mb-1">Email Configuration</h2>
+        <p class="text-muted mb-0">Choose whether workflow emails go to the intended recipients or are routed to a single test mailbox.</p>
+    </div>
+</div>
+
+<form method="POST" class="section-card">
+    <div class="row g-4">
+        <div class="col-md-6">
+            <label class="form-label">Recipient Routing</label>
+            <select class="form-select" name="delivery_mode" id="deliveryModeSelect">
+                <option value="{{ delivery_intended }}" {% if config.delivery_mode == delivery_intended %}selected{% endif %}>Intended Recipients</option>
+                <option value="{{ delivery_test }}" {% if config.delivery_mode == delivery_test %}selected{% endif %}>Test Address</option>
+            </select>
+            <div class="form-text">When `Test Address` is selected, all workflow emails are redirected to one mailbox.</div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Test Address</label>
+            <input
+                type="email"
+                class="form-control"
+                name="test_address"
+                id="testAddressInput"
+                value="{{ config.test_address or '' }}"
+                placeholder="qa@atikes.com"
+            >
+            <div class="form-text">This is used only when the routing mode is set to `Test Address`.</div>
+        </div>
+    </div>
+
+    <div class="modal-footer-strip mt-4">
+        <p class="modal-footer-copy">This setting affects leave, reimbursement, and accounts request workflow emails centrally.</p>
+        <button type="submit" class="btn btn-primary">Save Configuration</button>
+    </div>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const modeSelect = document.getElementById("deliveryModeSelect");
+    const testAddressInput = document.getElementById("testAddressInput");
+
+    const syncState = () => {
+        const isTestMode = modeSelect.value === "{{ delivery_test }}";
+        testAddressInput.toggleAttribute("required", isTestMode);
+    };
+
+    modeSelect.addEventListener("change", syncState);
+    syncState();
+});
+</script>
+{% endblock %}

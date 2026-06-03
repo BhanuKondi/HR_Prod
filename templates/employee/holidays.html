@@ -2,26 +2,36 @@
 {% block title %}Holiday List{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Company Holidays</h2>
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Holiday Calendar</p>
+        <h2 class="fw-bold mb-1">Company Holidays</h2>
+        <p class="text-muted mb-0">Review the official holiday calendar for your planning.</p>
+    </div>
+</div>
 
-    <table class="table table-striped mt-4">
-        <thead>
-            <tr>
-                <th>S.No</th>
-                <th>Holiday</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for h in holidays %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ h.occasion }}</td>
-                <td>{{ h.date }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-striped mt-4">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Holiday</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in holidays %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ h.occasion }}</td>
+                    <td>{{ h.date }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center text-muted">No holidays available.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

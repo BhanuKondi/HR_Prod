@@ -1,0 +1,57 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+  <div class="data-toolbar">
+    <div>
+      <p class="eyebrow mb-2">Payroll Control</p>
+      <h2 class="fw-bold mb-1">Salary Revisions</h2>
+      <p class="text-muted mb-0">HR submits revision requests. Fixed approver reviews and approves.</p>
+    </div>
+    <a href="{{ url_for('admin_salary_revisions.new_revision') }}" class="btn btn-primary">New Revision</a>
+  </div>
+  <div class="hero-metrics">
+    <a class="hero-metric {% if status_filter == 'pending' %}active{% endif %}" href="{{ url_for('admin_salary_revisions.list_revisions', status_filter='pending') }}"><span>Pending Approval</span><strong>{{ summary.pending }}</strong></a>
+    <a class="hero-metric {% if status_filter == 'approved' %}active{% endif %}" href="{{ url_for('admin_salary_revisions.list_revisions', status_filter='approved') }}"><span>Approved</span><strong>{{ summary.approved }}</strong></a>
+    <a class="hero-metric {% if status_filter == 'rejected' %}active{% endif %}" href="{{ url_for('admin_salary_revisions.list_revisions', status_filter='rejected') }}"><span>Rejected</span><strong>{{ summary.rejected }}</strong></a>
+    <a class="hero-metric {% if status_filter == 'all' %}active{% endif %}" href="{{ url_for('admin_salary_revisions.list_revisions', status_filter='all') }}"><span>All</span><strong>{{ summary.all }}</strong></a>
+  </div>
+</div>
+
+<div class="section-card">
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Revision No</th>
+          <th>Employee</th>
+          <th>Requested By</th>
+          <th>Approver</th>
+          <th>Effective From</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in revisions %}
+        <tr>
+          <td>{{ row.revision_no }}</td>
+          <td>{{ row.employee.first_name }} {{ row.employee.last_name }}</td>
+          <td>{{ row.requested_by.display_name or row.requested_by.email if row.requested_by else '-' }}</td>
+          <td>{{ row.approver.display_name or row.approver.email if row.approver else '-' }}</td>
+          <td>{{ row.effective_from.strftime('%b %Y') if row.effective_from else '-' }}</td>
+          <td><span class="badge bg-light text-dark">{{ row.status.replace('_', ' ').title() }}</span></td>
+          <td><a href="{{ url_for('admin_salary_revisions.view_revision', revision_id=row.id) }}" class="btn btn-sm btn-primary">View</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted">No salary revisions found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.hero-metrics .hero-metric { text-decoration: none; cursor: pointer; }
+.hero-metrics .hero-metric.active { border: 2px solid var(--brand-primary); box-shadow: 0 10px 24px rgba(13, 110, 253, 0.14); }
+</style>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Employee Loans</p>
+            <h2 class="fw-bold mb-1">{{ loan.loan_no }}</h2>
+            <p class="text-muted mb-0">Track approval, payment, and monthly payroll deductions for this loan.</p>
+        </div>
+        {% if can_submit %}
+        <form action="{{ url_for('employee_loans.submit_loan', loan_id=loan.id) }}" method="POST">
+            <button type="submit" class="btn btn-primary">Submit For Approval</button>
+        </form>
+        {% endif %}
+    </div>
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Requested</span><strong>{{ "%.2f"|format(loan.requested_amount or 0) }}</strong></div>
+        <div class="hero-metric"><span>Approved</span><strong>{{ "%.2f"|format(loan.approved_amount or 0) }}</strong></div>
+        <div class="hero-metric"><span>Monthly EMI</span><strong>{{ "%.2f"|format(loan.monthly_installment or 0) }}</strong></div>
+        <div class="hero-metric"><span>Status</span><strong>{{ loan.status.replace('_', ' ').title() }}</strong></div>
+        <div class="hero-metric"><span>Installments</span><strong>{{ loan.total_installments }}</strong></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="section-card h-100">
+            <h5 class="mb-3">Loan Summary</h5>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Approver</label><input class="form-control" readonly value="{{ loan.approver.display_name or loan.approver.email if loan.approver else '-' }}"></div>
+                <div class="col-md-6"><label class="form-label">Preferred Disbursement Date</label><input class="form-control" readonly value="{{ loan.preferred_disbursement_date.strftime('%d %b %Y') if loan.preferred_disbursement_date else '-' }}"></div>
+                <div class="col-md-6"><label class="form-label">Repayment Starts</label><input class="form-control" readonly value="{% if loan.repayment_start_year and loan.repayment_start_month %}{{ '%02d' % loan.repayment_start_month }}/{{ loan.repayment_start_year }}{% else %}-{% endif %}"></div>
+                <div class="col-md-6"><label class="form-label">Payment Date</label><input class="form-control" readonly value="{{ loan.payment_date.strftime('%d %b %Y') if loan.payment_date else '-' }}"></div>
+                <div class="col-12"><label class="form-label">Reason</label><textarea class="form-control" rows="4" readonly>{{ loan.reason }}</textarea></div>
+                <div class="col-12"><label class="form-label">Repayment Notes</label><textarea class="form-control" rows="3" readonly>{{ loan.repayment_notes or '-' }}</textarea></div>
+                <div class="col-12"><label class="form-label">Approval Comments</label><textarea class="form-control" rows="3" readonly>{{ loan.approval_comments or '-' }}</textarea></div>
+                <div class="col-12"><label class="form-label">Finance Comments</label><textarea class="form-control" rows="3" readonly>{{ loan.finance_comments or '-' }}</textarea></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="section-card h-100">
+            <h5 class="mb-3">Repayment Schedule</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Month</th>
+                            <th>Installment</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for repayment in loan.repayments|sort(attribute='created_at') %}
+                        <tr>
+                            <td>{{ '%02d' % repayment.payroll_month }}/{{ repayment.payroll_year }}</td>
+                            <td>{{ repayment.installment_number }}/{{ loan.total_installments }}</td>
+                            <td>{{ "%.2f"|format(repayment.deducted_amount or 0) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-center text-muted py-4">No payroll deductions recorded yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section-card mt-4">
+    <h5 class="mb-3">Activity Timeline</h5>
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Action</th>
+                    <th>By</th>
+                    <th>Status Change</th>
+                    <th>Comments</th>
+                    <th>When</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for action in loan.actions|sort(attribute='created_at') %}
+                <tr>
+                    <td>{{ action.action_type.replace('_', ' ').title() }}</td>
+                    <td>{{ action.action_by.display_name or action.action_by.email if action.action_by else '-' }}</td>
+                    <td>{{ (action.from_status or 'new')|replace('_', ' ')|title }} → {{ action.to_status|replace('_', ' ')|title }}</td>
+                    <td>{{ action.comments or '-' }}</td>
+                    <td>{{ action.created_at.strftime("%d %b %Y, %I:%M %p") if action.created_at else '-' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No actions yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

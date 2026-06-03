@@ -1,0 +1,30 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Employee Loans</p>
+        <h2 class="fw-bold mb-1">Loan Settings</h2>
+        <p class="text-muted mb-0">Choose the fixed approver who reviews all employee loan requests before they move to finance.</p>
+    </div>
+</div>
+
+<form method="POST" class="section-card">
+    <div class="row g-4">
+        <div class="col-md-8">
+            <label class="form-label">Fixed Approver</label>
+            <select class="form-select" name="fixed_approver_user_id" required>
+                <option value="">Select approver</option>
+                {% for user in approver_users %}
+                <option value="{{ user.id }}" {% if config.fixed_approver_user_id == user.id %}selected{% endif %}>
+                    {{ user.employee.first_name ~ ' ' ~ user.employee.last_name if user.employee else (user.display_name or user.email) }} ({{ user.email }})
+                </option>
+                {% endfor %}
+            </select>
+            <div class="form-text">All employee loan requests will route to this approver first, then to account admin for payment.</div>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Save Settings</button>
+        </div>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Employee Loans</p>
+        <h2 class="fw-bold mb-1">Loan Payment Queue</h2>
+        <p class="text-muted mb-0">Disburse approved employee loans, capture payment details, and set the payroll deduction start month.</p>
+    </div>
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Pending Payment</span><strong>{{ summary.pending_payment }}</strong></div>
+        <div class="hero-metric"><span>Paid</span><strong>{{ summary.paid }}</strong></div>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Loan No</th>
+                    <th>Employee</th>
+                    <th>Approved Amount</th>
+                    <th>Installments</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in loans %}
+                <tr>
+                    <td>{{ loan.loan_no }}</td>
+                    <td>{{ loan.employee.first_name }} {{ loan.employee.last_name }}</td>
+                    <td>{{ "%.2f"|format(loan.approved_amount or 0) }}</td>
+                    <td>{{ loan.total_installments }}</td>
+                    <td>{{ loan.status.replace("_", " ").title() }}</td>
+                    <td><a href="{{ url_for('account_loans.view_loan', loan_id=loan.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No employee loans in the payment queue.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

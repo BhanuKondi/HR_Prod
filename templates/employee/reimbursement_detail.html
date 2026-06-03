@@ -1,0 +1,101 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Expense Claims</p>
+            <h2 class="fw-bold mb-1">{{ reimbursement.request_no }}</h2>
+            <p class="text-muted mb-0">{{ reimbursement.reimbursement_type.name if reimbursement.reimbursement_type else "Reimbursement" }} submitted on {{ reimbursement.created_at.strftime("%d %b %Y") if reimbursement.created_at else "-" }}.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('employee_reimbursements.download_pdf', request_id=reimbursement.id) }}" class="btn btn-outline-primary">Download Summary</a>
+            {% if can_submit %}
+            <form action="{{ url_for('employee_reimbursements.submit_reimbursement', request_id=reimbursement.id) }}" method="POST">
+                <button type="submit" class="btn btn-primary">Submit For Approval</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Company</span><strong>{{ reimbursement.company.display_name if reimbursement.company else "-" }}</strong></div>
+        <div class="hero-metric"><span>Requested</span><strong>{{ "%.2f"|format(reimbursement.requested_amount or 0) }}</strong></div>
+        <div class="hero-metric"><span>Status</span><strong>{{ reimbursement.status.replace("_", " ").title() }}</strong></div>
+        <div class="hero-metric"><span>Current Approver</span><strong>
+            {% if reimbursement.status == 'pending_manager' %}
+                {{ reimbursement.manager_approver.display_name or reimbursement.manager_approver.email if reimbursement.manager_approver else 'Not assigned' }}
+            {% elif reimbursement.status in ['pending_finance', 'approved_for_payment', 'paid'] %}
+                {{ reimbursement.finance_approver.display_name or reimbursement.finance_approver.email if reimbursement.finance_approver else 'Finance Team' }}
+            {% else %}
+                -
+            {% endif %}
+        </strong></div>
+        <div class="hero-metric"><span>Manager Approved</span><strong>{{ "%.2f"|format(reimbursement.manager_approved_amount or 0) }}</strong></div>
+        <div class="hero-metric"><span>Final Amount</span><strong>{{ "%.2f"|format(reimbursement.final_amount or 0) }}</strong></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="section-card h-100">
+            <h5 class="mb-3">Request Summary</h5>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Company</label><input class="form-control" readonly value="{{ reimbursement.company.legal_name if reimbursement.company else '-' }}"></div>
+                <div class="col-md-6"><label class="form-label">GST</label><input class="form-control" readonly value="{{ reimbursement.company.gst_number if reimbursement.company else '-' }}"></div>
+                <div class="col-md-6"><label class="form-label">Bill Date</label><input class="form-control" readonly value="{{ reimbursement.bill_date.strftime('%d %b %Y') if reimbursement.bill_date else '-' }}"></div>
+                <div class="col-md-6"><label class="form-label">Assigned Manager</label><input class="form-control" readonly value="{{ reimbursement.manager_approver.display_name or reimbursement.manager_approver.email if reimbursement.manager_approver else 'Not assigned' }}"></div>
+                <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" rows="5" readonly>{{ reimbursement.description }}</textarea></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="section-card h-100">
+            <h5 class="mb-3">Attachments</h5>
+            <div class="list-group">
+                {% for attachment in reimbursement.attachments %}
+                <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" target="_blank" href="{{ url_for('static', filename=attachment.file_path) }}">
+                    <span>{{ attachment.file_name }}</span>
+                    <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+                {% else %}
+                <div class="text-muted">No files uploaded.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section-card mt-4">
+    <div class="data-toolbar">
+        <div>
+            <h5 class="mb-1">Approval Timeline</h5>
+            <p class="text-muted mb-0">Every workflow action is recorded with its comments and timestamp.</p>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Action</th>
+                    <th>By</th>
+                    <th>Status Change</th>
+                    <th>Comments</th>
+                    <th>When</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for action in reimbursement.actions|sort(attribute='created_at') %}
+                <tr>
+                    <td>{{ action.action_type.replace('_', ' ').title() }}</td>
+                    <td>{{ action.action_by.display_name or action.action_by.email if action.action_by else '-' }}</td>
+                    <td>{{ (action.from_status or 'new')|replace('_', ' ')|title }} → {{ action.to_status|replace('_', ' ')|title }}</td>
+                    <td>{{ action.comments or '-' }}</td>
+                    <td>{{ action.created_at.strftime("%d %b %Y, %I:%M %p") if action.created_at else '-' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No actions yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

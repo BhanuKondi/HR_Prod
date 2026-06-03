@@ -1,41 +1,38 @@
 {% extends "manager/manager_base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-  <!-- Page Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-primary">
-      <i class="bi bi-people"></i> My Team
-    </h2>
-    <span id="liveClock" class="fs-5 fw-semibold badge bg-dark px-3 py-2"></span>
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+  <div>
+    <p class="eyebrow mb-2">Team Overview</p>
+    <h2 class="fw-bold mb-1">My Team</h2>
+    <p class="text-muted mb-0">Monitor reportee attendance and drill into daily or monthly activity without leaving the manager workspace.</p>
   </div>
+  <span id="liveClock" class="badge bg-primary-subtle text-primary fs-6 px-3 py-2"></span>
+</div>
 
-  <!-- Team Attendance Table -->
-  <div class="card shadow-sm mb-4 border-0">
-    <div class="card-header bg-primary text-white">
-      <strong><i class="bi bi-calendar-day"></i> Today's Attendance ({{ today.strftime("%d-%m-%Y") }})</strong>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle mb-0" id="teamTodayTable">
-          <thead class="table-light">
-            <tr>
-              <th>Name</th>
-              <th>Clock In</th>
-              <th>Clock Out</th>
-              <th>Total Worked</th>
-              <th>Status</th>
-              <th>View</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">
+    <strong>Today's Attendance ({{ today.strftime("%d-%m-%Y") }})</strong>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle mb-0" id="teamTodayTable">
+        <thead class="table-light">
+          <tr>
+            <th>Name</th>
+            <th>Clock In</th>
+            <th>Clock Out</th>
+            <th>Total Worked</th>
+            <th>Status</th>
+            <th>View</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 </div>
 
-<!-- Modal -->
 <div class="modal fade" id="viewModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content shadow-lg border-0">
@@ -65,9 +62,8 @@
         </ul>
 
         <div class="tab-content mt-3">
-          <!-- Transactions -->
           <div class="tab-pane fade show active" id="transactions">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
               <div>
                 <label class="fw-bold me-2">Date:</label>
                 <input type="date" id="txnDate" class="form-control form-control-sm d-inline-block w-auto" />
@@ -95,7 +91,6 @@
             </div>
           </div>
 
-          <!-- Monthly -->
           <div class="tab-pane fade" id="monthly">
             <div class="mb-3">
               <label class="fw-bold me-2">Choose Month:</label>
@@ -107,7 +102,6 @@
             <div id="monthlySummary"></div>
           </div>
 
-          <!-- Last Record -->
           <div class="tab-pane fade" id="lastrecord">
             <div id="lastRecordBlock" class="p-3 border rounded bg-light"></div>
           </div>
@@ -117,13 +111,7 @@
   </div>
 </div>
 
-<style>
-table.table tbody tr:hover { background-color: #1075d9; transition: 0.2s; }
-.card { border-radius: 10px; }
-</style>
-
 <script>
-/* LIVE CLOCK */
 function startClock() {
   const clockEl = document.getElementById('liveClock');
   function update() {
@@ -133,10 +121,12 @@ function startClock() {
   setInterval(update, 1000);
 }
 
-/* CREATE TABLE CELL */
-function createCell(text) { const td = document.createElement('td'); td.innerText = text ?? '-'; return td; }
+function createCell(text) {
+  const td = document.createElement('td');
+  td.innerText = text ?? '-';
+  return td;
+}
 
-/* LOAD TEAM TODAY TABLE */
 async function loadTeamToday() {
   try {
     const res = await fetch("/manager/team/list_today");
@@ -167,16 +157,15 @@ async function loadTeamToday() {
   }
 }
 
-/* MODAL & TAB LOGIC */
 let currentModalUserId = null;
 let currentModalUserName = null;
 
-function openViewModal(userId, dateStr=null, userName=null) {
+function openViewModal(userId, dateStr = null, userName = null) {
   currentModalUserId = userId;
   currentModalUserName = userName;
   document.getElementById('modalTitle').innerText = "Attendance Details - " + (currentModalUserName ?? ("User #" + userId));
-  document.getElementById('txnDate').value = dateStr ?? new Date().toISOString().slice(0,10);
-  document.getElementById('monthSelect').value = new Date().toISOString().slice(0,7);
+  document.getElementById('txnDate').value = dateStr ?? new Date().toISOString().slice(0, 10);
+  document.getElementById('monthSelect').value = new Date().toISOString().slice(0, 7);
   loadTransactions();
   new bootstrap.Modal(document.getElementById('viewModal')).show();
 }
@@ -197,7 +186,7 @@ async function loadTransactions() {
     tbody.innerHTML = "";
     json.transactions?.forEach((tx, i) => {
       const tr = document.createElement('tr');
-      tr.appendChild(createCell(i+1));
+      tr.appendChild(createCell(i + 1));
       tr.appendChild(createCell(tx.clock_in));
       tr.appendChild(createCell(tx.clock_out));
       tr.appendChild(createCell(tx.duration));
@@ -215,7 +204,7 @@ async function loadTransactions() {
         <div>Worked: ${json.last_record.worked}</div>
         <div>Status: ${json.last_record.status}</div>
       </div>` : `<div class="text-muted">No records for this date</div>`;
-  } catch(err) {
+  } catch (err) {
     console.error("Error loading transactions", err);
     document.querySelector("#txnTable tbody").innerHTML = `<tr><td colspan="4">Failed to load</td></tr>`;
     document.getElementById('modalTopSummary').innerHTML = `<div class="text-danger">Error loading data</div>`;
@@ -228,14 +217,17 @@ async function loadMonthly() {
   if (!currentModalUserId) return;
   const monthVal = document.getElementById('monthSelect').value;
   if (!monthVal) return alert("Select month");
-  const [y,m] = monthVal.split('-');
+  const [y, m] = monthVal.split('-');
   try {
     const res = await fetch(`/manager/team/monthly/${currentModalUserId}/${y}/${m}`);
     const json = await res.json();
-    if (json.error) { document.getElementById('monthlySummary').innerHTML = `<div class="text-danger">${json.error}</div>`; return; }
+    if (json.error) {
+      document.getElementById('monthlySummary').innerHTML = `<div class="text-danger">${json.error}</div>`;
+      return;
+    }
 
     document.getElementById('monthlySummary').innerHTML = `
-      <div class="border p-3">
+      <div class="border p-3 rounded-4 bg-light-subtle">
         <div><strong>Month:</strong> ${y}-${m}</div>
         <div><strong>Present Days:</strong> ${json.present_days}</div>
         <div><strong>Absent Days:</strong> ${json.absent_days}</div>
@@ -243,10 +235,12 @@ async function loadMonthly() {
         <div><strong>Late Days:</strong> ${json.late_days}</div>
         <div><strong>Early Leaves:</strong> ${json.early_leaves}</div>
       </div>`;
-  } catch(err){ console.error("Failed monthly",err); document.getElementById('monthlySummary').innerHTML = `<div class="text-danger">Error loading monthly summary</div>`;}
+  } catch (err) {
+    console.error("Failed monthly", err);
+    document.getElementById('monthlySummary').innerHTML = `<div class="text-danger">Error loading monthly summary</div>`;
+  }
 }
 
-/* INIT */
 startClock();
 loadTeamToday();
 setInterval(loadTeamToday, 30000);

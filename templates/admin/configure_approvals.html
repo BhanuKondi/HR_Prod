@@ -1,52 +1,179 @@
 {% extends "admin/admin_base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Workflow Settings</p>
+        <h2 class="fw-bold mb-1">Leave Approval Workflow</h2>
+        <p class="text-muted mb-0">Define who approves leave at level 1 and level 2 across the organization.</p>
+    </div>
+</div>
 
-    <h2>Leave Approval Workflow Settings</h2>
-    <hr>
-
+<div class="section-card">
     <form method="POST">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <label class="form-label">Level 1 Approver</label>
+                <div class="approval-dropdown" data-target="level1">
+                    <input type="hidden" name="level1" id="level1Value" value="{% if config.use_manager_l1 %}MANAGER{% elif config.level1_approver_id %}{{ config.level1_approver_id }}{% endif %}">
+                    <button type="button" class="form-control text-start approval-toggle" id="level1Toggle">
+                        {% if config.use_manager_l1 %}
+                            Manager (Employee's Direct Manager)
+                        {% elif config.level1_approver_id %}
+                            {% for u in users %}
+                                {% if u.id == config.level1_approver_id %}
+                                    {% if u.employee %}
+                                        {{ u.employee.first_name }} {{ u.employee.last_name }} ({{ u.email }})
+                                    {% else %}
+                                        {{ u.display_name or u.email }} ({{ u.email }})
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            -- Select User --
+                        {% endif %}
+                    </button>
+                    <div class="approval-menu">
+                        <button type="button" class="approval-option" data-value="">
+                            -- Select User --
+                        </button>
+                        <button type="button" class="approval-option" data-value="MANAGER">
+                            Manager (Employee's Direct Manager)
+                        </button>
+                        {% for u in users %}
+                        <button type="button" class="approval-option" data-value="{{ u.id }}">
+                            {% if u.employee %}
+                                {{ u.employee.first_name }} {{ u.employee.last_name }} ({{ u.email }})
+                            {% else %}
+                                {{ u.display_name or u.email }} ({{ u.email }})
+                            {% endif %}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
 
-        <!-- LEVEL 1 APPROVER -->
-        <div class="form-group">
-            <label>Level 1 Approver</label>
-            <select name="level1" class="form-control">
-                <option value="">-- Select User --</option>
+            <div class="col-md-6">
+                <label class="form-label">Level 2 Approver</label>
+                <div class="approval-dropdown" data-target="level2">
+                    <input type="hidden" name="level2" id="level2Value" value="{{ config.level2_approver_id or '' }}">
+                    <button type="button" class="form-control text-start approval-toggle" id="level2Toggle">
+                        {% if config.level2_approver_id %}
+                            {% for u in users %}
+                                {% if u.id == config.level2_approver_id %}
+                                    {% if u.employee %}
+                                        {{ u.employee.first_name }} {{ u.employee.last_name }} ({{ u.email }})
+                                    {% else %}
+                                        {{ u.display_name or u.email }} ({{ u.email }})
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            -- Select User --
+                        {% endif %}
+                    </button>
+                    <div class="approval-menu">
+                        <button type="button" class="approval-option" data-value="">
+                            -- Select User --
+                        </button>
+                        {% for u in users %}
+                        <button type="button" class="approval-option" data-value="{{ u.id }}">
+                            {% if u.employee %}
+                                {{ u.employee.first_name }} {{ u.employee.last_name }} ({{ u.email }})
+                            {% else %}
+                                {{ u.display_name or u.email }} ({{ u.email }})
+                            {% endif %}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
 
-                <!-- Manager option -->
-                <option value="MANAGER"
-                    {% if config.use_manager_l1 %} selected {% endif %}>
-                    Manager (Employee's Direct Manager)
-                </option>
-
-                <!-- All users -->
-                {% for u in users %}
-                    <option value="{{ u.id }}"
-                        {% if not config.use_manager_l1 and config.level1_approver_id == u.id %} selected {% endif %}>
-                        {{ u.username }} ({{ u.email }})
-                    </option>
-                {% endfor %}
-            </select>
+            <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-primary px-4" type="submit">Save Settings</button>
+            </div>
         </div>
-
-        <!-- LEVEL 2 APPROVER -->
-        <div class="form-group mt-3">
-            <label>Level 2 Approver</label>
-            <select name="level2" class="form-control">
-                <option value="">-- Select User --</option>
-
-                {% for u in users %}
-                    <option value="{{ u.id }}"
-                        {% if config.level2_approver_id == u.id %} selected {% endif %}>
-                        {{ u.username }} ({{ u.email }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <button class="btn btn-primary mt-4" type="submit">Save Settings</button>
-
     </form>
 </div>
+
+<style>
+.approval-dropdown {
+    position: relative;
+}
+
+.approval-toggle {
+    min-height: 52px;
+    background-image: linear-gradient(45deg, transparent 50%, #5c7392 50%), linear-gradient(135deg, #5c7392 50%, transparent 50%);
+    background-position: calc(100% - 20px) calc(50% - 4px), calc(100% - 14px) calc(50% - 4px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 2.6rem;
+}
+
+.approval-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid rgba(217, 230, 247, 0.95);
+    border-radius: 16px;
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    max-height: 260px;
+    overflow-y: auto;
+    display: none;
+    z-index: 30;
+}
+
+.approval-dropdown.open .approval-menu {
+    display: block;
+}
+
+.approval-option {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    padding: 0.9rem 1rem;
+    color: #24384e;
+    font-weight: 600;
+}
+
+.approval-option:hover {
+    background: #eef6ff;
+}
+</style>
+
+<script>
+document.querySelectorAll(".approval-dropdown").forEach((dropdown) => {
+    const toggle = dropdown.querySelector(".approval-toggle");
+    const hidden = dropdown.querySelector("input[type='hidden']");
+    const options = dropdown.querySelectorAll(".approval-option");
+
+    toggle.addEventListener("click", () => {
+        document.querySelectorAll(".approval-dropdown.open").forEach((openDropdown) => {
+            if (openDropdown !== dropdown) {
+                openDropdown.classList.remove("open");
+            }
+        });
+        dropdown.classList.toggle("open");
+    });
+
+    options.forEach((option) => {
+        option.addEventListener("click", () => {
+            hidden.value = option.dataset.value;
+            toggle.textContent = option.textContent.trim();
+            dropdown.classList.remove("open");
+        });
+    });
+});
+
+document.addEventListener("click", (event) => {
+    if (!event.target.closest(".approval-dropdown")) {
+        document.querySelectorAll(".approval-dropdown.open").forEach((dropdown) => {
+            dropdown.classList.remove("open");
+        });
+    }
+});
+</script>
 {% endblock %}

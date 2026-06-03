@@ -1,0 +1,51 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Employee Loans</p>
+        <h2 class="fw-bold mb-1">{{ loan.loan_no }}</h2>
+        <p class="text-muted mb-0">Review this employee loan request and decide whether it should move to finance for payment.</p>
+    </div>
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Employee</span><strong>{{ loan.employee.first_name }} {{ loan.employee.last_name }}</strong></div>
+        <div class="hero-metric"><span>Requested</span><strong>{{ "%.2f"|format(loan.requested_amount or 0) }}</strong></div>
+        <div class="hero-metric"><span>Installments</span><strong>{{ loan.total_installments }}</strong></div>
+        <div class="hero-metric"><span>Status</span><strong>{{ loan.status.replace("_", " ").title() }}</strong></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="section-card h-100">
+            <h5 class="mb-3">Loan Request Details</h5>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Preferred Disbursement Date</label><input class="form-control" readonly value="{{ loan.preferred_disbursement_date.strftime('%d %b %Y') if loan.preferred_disbursement_date else '-' }}"></div>
+                <div class="col-md-6"><label class="form-label">Suggested EMI</label><input class="form-control" readonly value="{{ "%.2f"|format((loan.requested_amount / loan.total_installments) if loan.total_installments else 0) }}"></div>
+                <div class="col-12"><label class="form-label">Reason</label><textarea class="form-control" rows="4" readonly>{{ loan.reason }}</textarea></div>
+                <div class="col-12"><label class="form-label">Repayment Notes</label><textarea class="form-control" rows="3" readonly>{{ loan.repayment_notes or '-' }}</textarea></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="section-card">
+            {% if loan.status == 'pending_approval' %}
+            <form action="{{ url_for('admin_loans.approve_loan', loan_id=loan.id) }}" method="POST" class="mb-3">
+                <label class="form-label">Approved Amount</label>
+                <input type="number" class="form-control mb-3" name="approved_amount" step="0.01" min="0.01" value="{{ loan.requested_amount }}" required>
+                <label class="form-label">Approval Comments</label>
+                <textarea class="form-control mb-3" name="comments" rows="3" placeholder="Optional approval note"></textarea>
+                <button type="submit" class="btn btn-success w-100">Approve And Send To Finance</button>
+            </form>
+
+            <form action="{{ url_for('admin_loans.reject_loan', loan_id=loan.id) }}" method="POST">
+                <label class="form-label">Reject Comments</label>
+                <textarea class="form-control mb-3" name="comments" rows="3" placeholder="Required when rejecting" required></textarea>
+                <button type="submit" class="btn btn-outline-danger w-100">Reject Request</button>
+            </form>
+            {% else %}
+            <div class="alert alert-light border mb-0">This loan request has already moved past the approval stage.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

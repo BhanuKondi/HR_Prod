@@ -6,29 +6,56 @@
 <!-- ================= Generate Pay Run ================= -->
 <div class="card mb-4">
     <div class="card-body">
+
+        {% if not payroll_approved %}
         <form method="POST" action="{{ url_for('admin_payroll.generate_payrun') }}">
+        {% endif %}
+
             <div class="row g-3 align-items-end">
  
                 <!-- Month Picker -->
                 <div class="col-md-6">
                     <label class="form-label">Payroll Month</label>
                     <input type="month"
-                           name="pay_month"
-                           class="form-control"
-                           value="{{ selected_year | default('') }}{% if selected_month is defined %}-{{ '%02d' % selected_month }}{% endif %}"
- 
-                           required>
+       id="payMonth"
+       name="pay_month"
+       class="form-control"
+       value="{% if selected_year and selected_month %}{{ selected_year }}-{{ '%02d' % selected_month }}{% endif %}"
+       required>
                 </div>
  
                 <!-- Button -->
-                <div class="col-md-6">
+                <div class="col-md-6" id="generateSection">
+                    {% if not payroll_approved %}
                     <button class="btn btn-primary w-100 mt-4">
                         Generate Pay Run
                     </button>
+                    
+                    {% else %}
+                    <div class="alert alert-success text-center mt-4 mb-0">
+                        ✔ Payroll already approved for {{ selected_month }}/{{ selected_year }}
+                    </div>
+                    {% endif %}
                 </div>
+                
  
             </div>
+
+        {% if not payroll_approved %}
         </form>
+        <div class="col-md-6">
+
+    <!-- VIEW BUTTON -->
+    <form method="POST" action="{{ url_for('admin_payroll.generate_payrun') }}">
+        <input type="hidden" name="pay_month" id="hiddenMonth">
+        <button type="submit" class="btn btn-info w-100 mt-4">
+            View Payroll Data
+        </button>
+    </form>
+
+</div>
+        {% endif %}
+
     </div>
 </div>
  
@@ -67,18 +94,32 @@
                     <th>Emp Code</th>
                     <th>Name</th>
                     <th>Salary Month</th>
-                    <th>Monthly Salary</th>
+                    <th>Gross</th>
+                    <th>Basic</th>
+                    <th>HRA</th>
+                    <th>Special Allow.</th>
+                    <th>Fixed Allow.</th>
+                    <th>Medical</th>
+                    <th>Driver</th>
                     <th>Total Working Days</th>
                     <th>Present Days</th>
                     <th>Absent Days</th>
                     <th>LWP Days</th>
                     <th>LWP Deduction</th>
- 
-                    <!-- NEW COLUMNS -->
+                    <th>Absent Deduction</th>
+                    <th>Loan EMI</th>
+                    <th>Emp PF</th>
+                    <th>PT</th>
+                    <th>ESI</th>
+                    <th>TDS</th>
+                    <th>Total Deductions</th>
                     <th>Bonus</th>
                     <th>Deduction</th>
                     <th>Comments</th>
                     <th>Net Salary</th>
+                    <th>Employer PF</th>
+                    <th>Gratuity Prov.</th>
+                    <th>Employer Cost</th>
                 </tr>
             </thead>
  
@@ -89,11 +130,24 @@
                     <td>{{ row.name }}</td>
                     <td>{{ row.salary_month }}</td>
                     <td>{{ row.monthly_salary }}</td>
+                    <td>{{ row.basic }}</td>
+                    <td>{{ row.hra }}</td>
+                    <td>{{ row.special_allowance }}</td>
+                    <td>{{ row.fixed_allowance }}</td>
+                    <td>{{ row.medical_allowance }}</td>
+                    <td>{{ row.driver_reimbursement }}</td>
                     <td>{{ row.total_working_days }}</td>
                     <td>{{ row.present_days }}</td>
                     <td>{{ row.absent_days }}</td>
                     <td>{{ row.lwp_days }}</td>
                     <td>{{ row.lwp_deduction }}</td>
+                    <td>{{ row.absent_deduction }}</td>
+                    <td>{{ row.loan_deduction }}</td>
+                    <td>{{ row.employee_pf }}</td>
+                    <td>{{ row.professional_tax }}</td>
+                    <td>{{ row.esi }}</td>
+                    <td>{{ row.tds }}</td>
+                    <td>{{ row.total_deductions }}</td>
  
                     <!-- BONUS -->
                     <td>
@@ -102,7 +156,8 @@
                             value="{{ row.bonus }}"
                             class="form-control bonus-input text-center"
                             style="width: 100px; font-size: 16px;"
-                            min="0">
+                            min="0"
+                            {% if payroll_approved %}readonly{% endif %}>
                     </td>
  
                     <!-- DEDUCTION -->
@@ -112,20 +167,28 @@
                             value="{{ row.deduction }}"
                             class="form-control deduction-input text-center"
                             style="width: 100px; font-size: 16px;"
-                            min="0">
+                            min="0"
+                            {% if payroll_approved %}readonly{% endif %}>
                     </td>
+
+                    <!-- COMMENTS -->
                     <td>
-    <input type="text"
-        name="comments_{{ row.emp_code }}"
-        value="{{ row.comments or '' }}"
-        class="form-control text-center"
-        style="width: 150px; font-size: 14px;">
-</td>
+                        <input type="text"
+                            name="comments_{{ row.emp_code }}"
+                            value="{{ row.comments or '' }}"
+                            class="form-control text-center"
+                            style="width: 150px; font-size: 14px;"
+                            {% if payroll_approved %}readonly{% endif %}>
+                    </td>
+
                     <!-- FINAL NET SALARY -->
                     <td class="final-salary"
                         data-base="{{ row.net_salary }}">
                         {{ row.final_salary }}
                     </td>
+                    <td>{{ row.employer_pf }}</td>
+                    <td>{{ row.gratuity_provision }}</td>
+                    <td>{{ row.employer_monthly_cost }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -136,9 +199,11 @@
         <input type="hidden" name="year" value="{{ selected_year }}">
  
         <!-- Save button -->
+        {% if not payroll_approved %}
         <button type="button" id="saveBtn" class="btn btn-primary mt-3">
             Save Bonus & Deduction
         </button>
+        {% endif %}
     </div>
 </div>
  
@@ -146,48 +211,213 @@
 {% endif %}
  
 <script>
-    document.getElementById("saveBtn").addEventListener("click", function () {
- 
+document.getElementById("saveBtn")?.addEventListener("click", function () {
+
     const form = document.querySelector("form[action*='update-adjustments']");
     const formData = new FormData(form);
- 
+
     fetch(form.action, {
         method: "POST",
         body: formData
     })
     .then(() => {
         alert("Saved successfully!");
+        location.reload(); // 🔥 FIXED
     })
     .catch(() => {
         alert("Error saving data");
     });
- 
+
 });
 document.addEventListener("DOMContentLoaded", function () {
- 
+
+    const monthInput = document.getElementById("payMonth");
+    const hiddenMonth = document.getElementById("hiddenMonth");
+    const tableBody = document.querySelector("tbody");
+    const generateSection = document.getElementById("generateSection");
+    const saveBtn = document.getElementById("saveBtn");
+
+    monthInput.addEventListener("change", function () {
+
+        let value = this.value;
+        if (!value) return;
+        if (hiddenMonth) hiddenMonth.value = value;
+
+        let [year, month] = value.split("-");
+
+        if (!tableBody) {
+            fetch(`/admin/payroll/check-status?month=${month}&year=${year}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.approved) {
+                    generateSection.innerHTML = `
+                        <div class="alert alert-success text-center mt-4 mb-0">
+                            ✔ Payroll Approved
+                        </div>
+                    `;
+                } else {
+                    generateSection.innerHTML = `
+                        <button class="btn btn-primary w-100 mt-4">
+                            Generate Pay Run
+                        </button>
+                    `;
+                }
+            });
+            return;
+        }
+
+        fetch(`/admin/payroll/get-data?month=${month}&year=${year}`)
+        .then(res => res.json())
+        .then(res => {
+
+            // =========================
+            // BUTTON LOGIC
+            // =========================
+            if (res.approved) {
+                generateSection.innerHTML = `
+                    <div class="alert alert-success text-center mt-4 mb-0">
+                        ✔ Payroll Approved
+                    </div>
+                `;
+                if (saveBtn) saveBtn.style.display = "none";
+            } else {
+                generateSection.innerHTML = `
+                    <button class="btn btn-primary w-100 mt-4">
+                        Generate Pay Run
+                    </button>
+                `;
+                if (saveBtn) saveBtn.style.display = "block";
+            }
+
+            // =========================
+            // TABLE UPDATE
+            // =========================
+            tableBody.innerHTML = "";
+
+            res.data.forEach(row => {
+
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${row.emp_code}</td>
+                        <td>${row.name}</td>
+                        <td>${row.salary_month}</td>
+                        <td>${row.monthly_salary}</td>
+                        <td>${row.basic}</td>
+                        <td>${row.hra}</td>
+                        <td>${row.special_allowance}</td>
+                        <td>${row.fixed_allowance}</td>
+                        <td>${row.medical_allowance}</td>
+                        <td>${row.driver_reimbursement}</td>
+                        <td>${row.total_working_days}</td>
+                        <td>${row.present_days}</td>
+                        <td>${row.absent_days}</td>
+                        <td>${row.lwp_days}</td>
+                        <td>${row.lwp_deduction}</td>
+                        <td>${row.absent_deduction}</td>
+                        <td>${row.loan_deduction}</td>
+                        <td>${row.employee_pf}</td>
+                        <td>${row.professional_tax}</td>
+                        <td>${row.esi}</td>
+                        <td>${row.tds}</td>
+                        <td>${row.total_deductions}</td>
+
+                        <td>
+                            <input type="number" value="${row.bonus}"
+                                class="form-control text-center"
+                                ${res.approved ? "readonly" : ""}>
+                        </td>
+
+                        <td>
+                            <input type="number" value="${row.deduction}"
+                                class="form-control text-center"
+                                ${res.approved ? "readonly" : ""}>
+                        </td>
+
+                        <td>
+                            <input type="text" value="${row.comments}"
+                                class="form-control text-center"
+                                ${res.approved ? "readonly" : ""}>
+                        </td>
+
+                        <td>${row.final_salary}</td>
+                        <td>${row.employer_pf}</td>
+                        <td>${row.gratuity_provision}</td>
+                        <td>${row.employer_monthly_cost}</td>
+                    </tr>
+                `;
+            });
+
+        });
+
+    });
+
+});
+document.addEventListener("DOMContentLoaded", function () {
+
     const rows = document.querySelectorAll("tbody tr");
- 
+
     rows.forEach(row => {
         const bonusInput = row.querySelector(".bonus-input");
         const deductionInput = row.querySelector(".deduction-input");
-        const finalSalaryCell = row.querySelector(".final-salary"); // ✅ FIX
- 
+        const finalSalaryCell = row.querySelector(".final-salary");
+
         function updateSalary() {
             let base = parseFloat(finalSalaryCell.dataset.base) || 0;
             let bonus = parseFloat(bonusInput.value) || 0;
             let deduction = parseFloat(deductionInput.value) || 0;
- 
+
             let finalSalary = base + bonus - deduction;
- 
+
             finalSalaryCell.innerText = finalSalary.toFixed(2);
         }
- 
-        bonusInput.addEventListener("input", updateSalary);
-        deductionInput.addEventListener("input", updateSalary);
+
+        bonusInput?.addEventListener("input", updateSalary);
+        deductionInput?.addEventListener("input", updateSalary);
     });
- 
+
 });
+document.addEventListener("DOMContentLoaded", function () {
+
+    const monthInput = document.getElementById("payMonth");
+    const hiddenMonth = document.getElementById("hiddenMonth");
+    const generateSection = document.getElementById("generateSection");
+
+    if (monthInput && hiddenMonth) {
+        hiddenMonth.value = monthInput.value;
+    }
+
+    monthInput.addEventListener("change", function () {
+
+        let value = this.value;
+        if (!value) return;
+        if (hiddenMonth) hiddenMonth.value = value;
+
+        let [year, month] = value.split("-");
+
+        fetch(`/admin/payroll/check-status?month=${month}&year=${year}`)
+        .then(res => res.json())
+        .then(data => {
+
+            if (data.approved) {
+                generateSection.innerHTML = `
+                    <div class="alert alert-success text-center mt-4 mb-0">
+                        ✔ Payroll already approved
+                    </div>
+                `;
+            } else {
+                generateSection.innerHTML = `
+                    <button class="btn btn-primary w-100 mt-4">
+                        Generate Pay Run
+                    </button>
+                `;
+            }
+
+        });
+
+    });
+
+});
+
 </script>
  
 {% endblock %}
- 

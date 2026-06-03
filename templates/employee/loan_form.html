@@ -1,0 +1,45 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Employee Loans</p>
+        <h2 class="fw-bold mb-1">New Loan Request</h2>
+        <p class="text-muted mb-0">Share how much you need, how many monthly deductions you prefer, and any context the approver should know.</p>
+    </div>
+</div>
+
+<form action="{{ url_for('employee_loans.create_loan') }}" method="POST" class="section-card">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <label class="form-label">Requested Amount</label>
+            <input type="number" class="form-control" name="requested_amount" step="0.01" min="0.01" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Repayment Installments</label>
+            <input type="number" class="form-control" name="total_installments" min="1" max="60" placeholder="e.g. 10" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Preferred Disbursement Date</label>
+            <input type="date" class="form-control" name="preferred_disbursement_date">
+        </div>
+        <div class="col-12">
+            <label class="form-label">Reason</label>
+            <textarea class="form-control" name="reason" rows="4" placeholder="Explain why you need the loan and any important circumstances." required></textarea>
+        </div>
+        <div class="col-12">
+            <label class="form-label">Repayment Notes</label>
+            <textarea class="form-control" name="repayment_notes" rows="3" placeholder="Optional note about repayment preference or anything the approver should know."></textarea>
+        </div>
+    </div>
+
+    <div class="modal-footer-strip mt-4">
+        <p class="modal-footer-copy">
+            The request will route to the configured fixed approver and then to finance for payment after approval.
+        </p>
+        <div class="d-flex gap-2">
+            <button type="submit" name="form_action" value="draft" class="btn btn-outline-primary">Save Draft</button>
+            <button type="submit" name="form_action" value="submit" class="btn btn-primary">Submit Request</button>
+        </div>
+    </div>
+</form>
+{% endblock %}

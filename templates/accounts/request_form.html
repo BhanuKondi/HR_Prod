@@ -1,0 +1,153 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Accounts Operations</p>
+        <h2 class="fw-bold mb-1">New Accounts Request</h2>
+        <p class="text-muted mb-0">Raise a request for office spend, including director owner house-rent expenses with audit-ready details.</p>
+    </div>
+</div>
+
+<form action="{{ url_for('account_requests.create_request') }}" method="POST" enctype="multipart/form-data" class="section-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <label class="form-label">Request Type</label>
+            <select class="form-select" id="requestType" name="request_type_id" required>
+                <option value="">Select type</option>
+                {% for item in request_types %}
+                <option value="{{ item.id }}" data-type-name="{{ item.name|lower }}">{{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Company</label>
+            <select class="form-select" name="company_id" required>
+                <option value="">Select company</option>
+                {% for company in companies %}
+                <option value="{{ company.id }}">{{ company.display_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Requested Amount</label>
+            <input type="number" class="form-control" name="requested_amount" step="0.01" min="0.01" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Payment Mode</label>
+            <select class="form-select" id="paymentMode" name="payment_mode" required>
+                <option value="">Select mode</option>
+                {% for value, label in payment_modes %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-control" id="requestTitle" name="title" placeholder="Utility bill payment for April, office petty cash, etc." required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Vendor / Payee</label>
+            <input type="text" class="form-control" name="vendor_name" placeholder="Optional vendor or payee name">
+        </div>
+        <div class="col-12">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="requestDescription" name="description" rows="4" placeholder="Explain the expense, purpose, and any context the approver should know." required></textarea>
+        </div>
+
+        <div class="col-12 d-none" id="directorRentFields">
+            <div class="border rounded p-3 bg-light">
+                <h6 class="mb-3">Director House Rent Details</h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Rent Month</label>
+                        <input type="month" class="form-control director-only" name="rent_month" id="rentMonth">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Landlord Name</label>
+                        <input type="text" class="form-control director-only" name="landlord_name" id="landlordName" placeholder="Landlord full name">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Landlord PAN</label>
+                        <input type="text" class="form-control" name="landlord_pan" placeholder="Optional PAN">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Property Address</label>
+                        <textarea class="form-control director-only" name="property_address" id="propertyAddress" rows="2" placeholder="Rental property address"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Lease / Agreement Reference</label>
+                        <input type="text" class="form-control" name="lease_reference" placeholder="Agreement number or notes">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Additional Notes</label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Optional notes for accounts or audit trail"></textarea>
+                    </div>
+                </div>
+                <div class="form-text mt-2">For this type, upload at least one supporting file (agreement, receipt, or rent proof) before submission.</div>
+            </div>
+        </div>
+        <div class="col-12">
+            <label class="form-label">Estimate / Quote Attachments</label>
+            <input type="file" class="form-control" name="estimate_attachments" accept="{{ allowed_attachment_accept }}" multiple>
+            <div class="form-text">Allowed formats: {{ allowed_attachment_label }}.</div>
+            <div class="form-text">Attach quotes, draft bills, or supporting estimates if you have them.</div>
+        </div>
+    </div>
+
+    <div class="modal-footer-strip mt-4">
+        <p class="modal-footer-copy">Submitting the request will send it to the configured approver for review.</p>
+        <div class="d-flex gap-2">
+            <button type="submit" name="form_action" value="draft" class="btn btn-outline-primary">Save Draft</button>
+            <button type="submit" name="form_action" value="submit" class="btn btn-primary">Submit For Approval</button>
+        </div>
+    </div>
+</form>
+
+<script>
+    (function () {
+        const requestTypeEl = document.getElementById("requestType");
+        const paymentModeEl = document.getElementById("paymentMode");
+        const titleEl = document.getElementById("requestTitle");
+        const descriptionEl = document.getElementById("requestDescription");
+        const directorFields = document.getElementById("directorRentFields");
+        const directorInputs = document.querySelectorAll(".director-only");
+        const directorTypeName = "{{ director_type_name }}";
+        const allowedDirectorModes = new Set(["pay_landlord", "reimburse_director"]);
+
+        function toggleDirectorMode() {
+            const selectedOption = requestTypeEl.options[requestTypeEl.selectedIndex];
+            const selectedName = (selectedOption?.dataset?.typeName || "").trim().toLowerCase();
+            const isDirector = selectedName === directorTypeName;
+
+            directorFields.classList.toggle("d-none", !isDirector);
+            directorInputs.forEach((field) => {
+                field.required = isDirector;
+            });
+
+            if (isDirector) {
+                if (!allowedDirectorModes.has(paymentModeEl.value)) {
+                    paymentModeEl.value = "pay_landlord";
+                }
+                for (const opt of paymentModeEl.options) {
+                    if (!opt.value) {
+                        continue;
+                    }
+                    opt.disabled = !allowedDirectorModes.has(opt.value);
+                }
+                titleEl.placeholder = "Director House Rent - 2026-04";
+                descriptionEl.placeholder = "Mention reason/context; structured rent details are added automatically.";
+            } else {
+                for (const opt of paymentModeEl.options) {
+                    opt.disabled = false;
+                }
+                titleEl.placeholder = "Utility bill payment for April, office petty cash, etc.";
+                descriptionEl.placeholder = "Explain the expense, purpose, and any context the approver should know.";
+            }
+        }
+
+        requestTypeEl.addEventListener("change", toggleDirectorMode);
+        toggleDirectorMode();
+    })();
+</script>
+{% endblock %}

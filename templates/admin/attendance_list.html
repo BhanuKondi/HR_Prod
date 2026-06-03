@@ -2,62 +2,137 @@
  
 {% block content %}
  
-<!-- PAGE HEADER -->
-<div class="container mt-4">
- 
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-primary">
-      <i class="bi bi-clipboard-check"></i> Attendance Dashboard
-    </h2>
- 
-    <span id="liveClock" class="fs-5 fw-semibold badge bg-dark px-3 py-2"></span>
+<div class="workspace-hero">
+  <div class="data-toolbar">
+    <div>
+      <p class="eyebrow mb-2">Attendance Control</p>
+      <h2 class="fw-bold mb-1">Attendance Dashboard</h2>
+      <p class="text-muted mb-0">Track daily attendance activity and inspect employee records with a cleaner review flow.</p>
+    </div>
+    <span id="liveClock" class="badge bg-primary-subtle text-primary fs-6 px-3 py-2"></span>
   </div>
- 
-  <!-- ============================
-       FILTER ATTENDANCE BY DATE
-  =============================== -->
-  <div class="card shadow-sm mb-4 border-0">
-    <div class="card-header bg-success text-white">
-      <strong><i class="bi bi-calendar-check"></i>Attendance by Date</strong>
+</div>
+
+<div class="section-card mb-4">
+  <div class="mini-stat-grid mb-4">
+    <div class="mini-stat-card">
+      <span>Present Today</span>
+      <strong id="presentTodayCount">0</strong>
+      <p>Employees with recorded attendance today.</p>
     </div>
- 
-    <div class="card-body d-flex align-items-center gap-2">
-      <label class="fw-bold mb-0">Select Date:</label>
-      <input type="date" id="filterDate" class="form-control w-auto" />
-      <button class="btn btn-success fw-bold" id="showDateBtn">
-        <i class="bi bi-eye"></i> Show
-      </button>
+    <div class="mini-stat-card">
+      <span>Open Sessions</span>
+      <strong id="activeTodayCount">0</strong>
+      <p>Currently active attendance sessions.</p>
+    </div>
+    <div class="mini-stat-card">
+      <span>No Activity</span>
+      <strong id="noActivityCount">0</strong>
+      <p>Employees with no attendance records today.</p>
+    </div>
+    <div class="mini-stat-card">
+      <span>Completed</span>
+      <strong id="completedTodayCount">0</strong>
+      <p>Employees who already closed all sessions.</p>
     </div>
   </div>
- 
-  <!-- ============================
-       TODAY'S ATTENDANCE ONLY
-  =============================== -->
-  <div class="card shadow-sm mb-4 border-0">
-    <div class="card-header bg-primary text-white">
-      <strong><i class="bi bi-calendar-day"></i> Today's Attendance</strong>
+
+  <div class="data-toolbar">
+    <div>
+      <h5 class="mb-1">Date Explorer</h5>
+      <p class="text-muted mb-0">Choose a date to inspect attendance across the whole organization.</p>
     </div>
- 
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle mb-0" id="todayTable">
-          <thead class="table-light">
-            <tr>
-              <th>Name</th>
-              <th>Clock In</th>
-              <th>Clock Out</th>
-              <th>Total Worked</th>
-              <th>Live Clock</th>
-              <th>Status</th>
-              <th>View</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+  </div>
+
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <label class="fw-bold mb-0">Select Date:</label>
+    <input type="date" id="filterDate" class="form-control w-auto" />
+    <button class="btn btn-success fw-bold" id="showDateBtn">
+      <i class="bi bi-eye"></i> Show
+    </button>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-xl-8">
+    <div class="section-card h-100">
+      <div class="data-toolbar">
+        <div>
+          <h5 class="mb-1">Team Activity Today</h5>
+          <p class="text-muted mb-0">Monitor who is active, who completed the day, and who has not started yet.</p>
+        </div>
+      </div>
+
+      <div class="attendance-summary-strip mb-3">
+        <div class="attendance-summary-chip">
+          <span>Focus</span>
+          <strong>Today</strong>
+        </div>
+        <div class="attendance-summary-chip">
+          <span>Review Mode</span>
+          <strong>Live Team Activity</strong>
+        </div>
+        <div class="attendance-summary-chip">
+          <span>Drilldown</span>
+          <strong>Employee-Level Modal</strong>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-0 border-0">
+        <div class="card-header bg-primary text-white">
+          <strong><i class="bi bi-calendar-day"></i> Today's Attendance</strong>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0" id="todayTable">
+              <thead class="table-light">
+                <tr>
+                  <th>Name</th>
+                  <th>Clock In</th>
+                  <th>Clock Out</th>
+                  <th>Total Worked</th>
+                  <th>Live Clock</th>
+                  <th>Status</th>
+                  <th>View</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
- 
+
+  <div class="col-xl-4">
+    <div class="section-card h-100">
+      <div class="data-toolbar">
+        <div>
+          <h5 class="mb-1">Exceptions</h5>
+          <p class="text-muted mb-0">Quickly spot the records that need follow-up or attention.</p>
+        </div>
+      </div>
+      <div class="insight-list" id="attendanceExceptionList">
+        <div class="insight-item">
+          <div>
+            <h6>Loading attendance insights...</h6>
+            <p>Today’s exceptions will appear here once the team data is loaded.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-card mb-4">
+  <div class="card shadow-sm mb-0 border-0">
+    <div class="card-header bg-primary text-white">
+      <strong><i class="bi bi-person-lines-fill"></i> Attendance Drilldown</strong>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-0">Use the <strong>View</strong> action from the live table to inspect transaction history, monthly summary, and the latest attendance record for any employee.</p>
+    </div>
+  </div>
 </div>
  
 <!-- ============================
@@ -74,7 +149,7 @@
  
       <div class="modal-body">
  
-        <div id="modalTopSummary" class="alert alert-info p-2 mb-3"></div>
+        <div id="modalTopSummary" class="attendance-summary-strip mb-3"></div>
  
         <!-- TABS -->
         <ul class="nav nav-tabs" id="viewTabs" role="tablist">
@@ -115,9 +190,11 @@
             </div>
  
             <!-- TOTAL WORKED HOURS -->
-            <div class="alert alert-primary py-2 mb-3">
-              <strong>Total Worked Hours:</strong>
-              <span id="day-total-worked" class="fw-bold">00:00:00</span>
+            <div class="attendance-summary-strip mb-3">
+              <div class="attendance-summary-chip">
+                <span>Total Worked</span>
+                <strong id="day-total-worked">00:00:00</strong>
+              </div>
             </div>
  
             <div class="table-responsive">
@@ -193,15 +270,6 @@
   </div>
 </div>
  
-<style>
-  /* BEAUTIFUL TABLE EFFECTS */
-  table.table tbody tr:hover {
-    background-color: #1075d9;
-    transition: 0.2s;
-  }
-  .card { border-radius: 10px; }
-</style>
- 
 <script>
 /* MAIN JAVASCRIPT */
 const IST_OFFSET = "+05:30";
@@ -248,6 +316,60 @@ async function loadToday() {
     const data = await res.json();
     const tbody = document.querySelector("#todayTable tbody");
     tbody.innerHTML = "";
+
+    const presentCount = data.filter(row => row.status !== "No Activity").length;
+    const activeCount = data.filter(row => String(row.status).toLowerCase() === "active").length;
+    const noActivityCount = data.filter(row => row.status === "No Activity").length;
+    const completedCount = data.filter(row => String(row.status).toLowerCase() === "completed").length;
+
+    document.getElementById("presentTodayCount").innerText = String(presentCount);
+    document.getElementById("activeTodayCount").innerText = String(activeCount);
+    document.getElementById("noActivityCount").innerText = String(noActivityCount);
+    document.getElementById("completedTodayCount").innerText = String(completedCount);
+
+    const exceptionList = document.getElementById("attendanceExceptionList");
+    const exceptionItems = [];
+
+    const activeRows = data.filter(row => String(row.status).toLowerCase() === "active").slice(0, 3);
+    const noActivityRows = data.filter(row => row.status === "No Activity").slice(0, 3);
+
+    if (activeRows.length) {
+      exceptionItems.push(`
+        <div class="insight-item">
+          <div>
+            <h6>Active sessions need monitoring</h6>
+            <p>${activeRows.map(row => row.name).join(", ")} ${activeRows.length > 1 ? "are" : "is"} currently clocked in.</p>
+          </div>
+          <span class="status-pill success">Live</span>
+        </div>
+      `);
+    }
+
+    if (noActivityRows.length) {
+      exceptionItems.push(`
+        <div class="insight-item">
+          <div>
+            <h6>No activity recorded yet</h6>
+            <p>${noActivityRows.map(row => row.name).join(", ")} ${noActivityRows.length > 1 ? "have" : "has"} not started attendance today.</p>
+          </div>
+          <span class="status-pill warning">Review</span>
+        </div>
+      `);
+    }
+
+    if (!exceptionItems.length) {
+      exceptionItems.push(`
+        <div class="insight-item">
+          <div>
+            <h6>No immediate exceptions</h6>
+            <p>Today’s attendance looks stable so far. Use the table to inspect individual records.</p>
+          </div>
+          <span class="status-pill info">Stable</span>
+        </div>
+      `);
+    }
+
+    exceptionList.innerHTML = exceptionItems.join("");
  
     data.forEach(row => {
       const tr = document.createElement("tr");
@@ -259,12 +381,20 @@ async function loadToday() {
       // ✅ LIVE CLOCK COLUMN
       const liveTd = document.createElement('td');
       liveTd.setAttribute("data-clockin", row.clock_in);
+      liveTd.setAttribute("data-clockin-iso", row.first_in_iso || "");
       liveTd.setAttribute("data-status", row.status);
       liveTd.setAttribute("data-worked", row.worked);
       liveTd.innerText = "00:00";
       tr.appendChild(liveTd);
  
-      tr.appendChild(createCell(row.status));
+      const statusTd = document.createElement('td');
+      const tone = String(row.status).toLowerCase() === "active"
+        ? "success"
+        : row.status === "No Activity"
+          ? "warning"
+          : "muted";
+      statusTd.innerHTML = `<span class="status-pill ${tone}">${row.status}</span>`;
+      tr.appendChild(statusTd);
       const btnTd = document.createElement('td');
       const btn = document.createElement('button');
       btn.className = "btn btn-sm btn-primary";
@@ -327,7 +457,8 @@ async function loadTransactions() {
     const dateDisplay = json.date || dateVal || '';
     const userDisplay = currentModalUserName ? ` - ${currentModalUserName}` : '';
     document.getElementById('modalTopSummary').innerHTML =
-      `<div><strong>Date:</strong> ${dateDisplay}${userDisplay}</div>`;
+      `<div class="attendance-summary-chip"><span>Date</span><strong>${dateDisplay}</strong></div>
+       <div class="attendance-summary-chip"><span>Employee</span><strong>${currentModalUserName || ("User #" + currentModalUserId)}</strong></div>`;
  
     const totalWorked = sumDurations(json.transactions);
     document.getElementById('day-total-worked').innerText = totalWorked;
@@ -335,12 +466,11 @@ async function loadTransactions() {
     const lastRec = json.last_record;
     if (lastRec) {
       document.getElementById('lastRecordBlock').innerHTML = `
-        <div class="border p-2">
-          <div><strong>Last Record</strong></div>
-          <div>Clock In: ${lastRec.clock_in}</div>
-          <div>Clock Out: ${lastRec.clock_out}</div>
-          <div>Worked: ${formatHHMM(lastRec.worked)}</div>
-          <div>Status: ${lastRec.status}</div>
+        <div class="attendance-summary-strip">
+          <div class="attendance-summary-chip"><span>Clock In</span><strong>${lastRec.clock_in}</strong></div>
+          <div class="attendance-summary-chip"><span>Clock Out</span><strong>${lastRec.clock_out}</strong></div>
+          <div class="attendance-summary-chip"><span>Worked</span><strong>${formatHHMM(lastRec.worked)}</strong></div>
+          <div class="attendance-summary-chip"><span>Status</span><strong>${lastRec.status}</strong></div>
         </div>`;
     } else {
       document.getElementById('lastRecordBlock').innerHTML =
@@ -373,15 +503,15 @@ async function loadMonthly() {
     }
  
     document.getElementById('monthlySummary').innerHTML = `
-      <div class="border p-3">
-        <div><strong>Month:</strong> ${json.year}-${String(json.month).padStart(2,'0')}</div>
-        <div><strong>Days in Month:</strong> ${json.days_in_month}</div>
-        <div><strong>Present Days:</strong> ${json.present_days}</div>
-        <div><strong>Absent Days:</strong> ${json.absent_days}</div>
-        <div><strong>Total Worked:</strong> ${json.total_worked}</div>
-        <div><strong>Average Daily:</strong> ${json.avg_daily}</div>
-        <div><strong>Late Days:</strong> ${json.late_days}</div>
-        <div><strong>Early Leaves:</strong> ${json.early_leaves}</div>
+      <div class="mini-stat-grid">
+        <div class="mini-stat-card"><span>Month</span><strong>${json.year}-${String(json.month).padStart(2,'0')}</strong><p>Selected review period.</p></div>
+        <div class="mini-stat-card"><span>Present Days</span><strong>${json.present_days}</strong><p>Days with attendance records.</p></div>
+        <div class="mini-stat-card"><span>Absent Days</span><strong>${json.absent_days}</strong><p>Days marked absent this month.</p></div>
+        <div class="mini-stat-card"><span>Total Worked</span><strong>${json.total_worked}</strong><p>Total worked duration in month.</p></div>
+        <div class="mini-stat-card"><span>Average Daily</span><strong>${json.avg_daily}</strong><p>Average time per present day.</p></div>
+        <div class="mini-stat-card"><span>Late Days</span><strong>${json.late_days}</strong><p>Days with delayed first clock-in.</p></div>
+        <div class="mini-stat-card"><span>Early Leaves</span><strong>${json.early_leaves}</strong><p>Days with early session end.</p></div>
+        <div class="mini-stat-card"><span>Days In Month</span><strong>${json.days_in_month}</strong><p>Calendar days in selected month.</p></div>
       </div>`;
   } catch (err) {
     console.error("Failed to load monthly summary", err);
@@ -420,22 +550,38 @@ document.getElementById('showDateBtn')?.addEventListener('click', async () => {
   }
 });
  
-function convertTo24Hour(timeStr) {
-  if (!timeStr) return null;
- 
-  const parts = timeStr.split(" ");
+function parseClockInTime(clockIn, clockInIso) {
+  if (clockInIso) {
+    const isoDate = new Date(clockInIso);
+    if (!Number.isNaN(isoDate.getTime())) {
+      return isoDate;
+    }
+  }
+
+  if (!clockIn || clockIn === "-") return null;
+  const parts = String(clockIn).trim().split(/\s+/);
   if (parts.length < 2) return null;
- 
+
   const time = parts[0];
-  const modifier = parts[1];
- 
+  const modifier = parts[1].toUpperCase();
   let [hours, minutes, seconds] = time.split(":").map(Number);
- 
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (!Number.isFinite(seconds)) seconds = 0;
+
   if (modifier === "PM" && hours !== 12) hours += 12;
   if (modifier === "AM" && hours === 12) hours = 0;
- 
-  return `${String(hours).padStart(2,'0')}:${minutes}:${seconds}`;
+
+  const now = new Date();
+  return new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    hours,
+    minutes,
+    seconds
+  );
 }
+
  
 function updateLiveClocks() {
   const rows = document.querySelectorAll("#todayTable tbody tr");
@@ -443,6 +589,7 @@ function updateLiveClocks() {
   rows.forEach(row => {
     const liveTd = row.children[4]; // Live clock column position
     const clockIn = liveTd.getAttribute("data-clockin");
+    const clockInIso = liveTd.getAttribute("data-clockin-iso");
     const status = liveTd.getAttribute("data-status");
  
       if (!clockIn || clockIn === "-") {
@@ -456,20 +603,15 @@ function updateLiveClocks() {
       return;
     }
     const now = new Date();
-    const today = now.toISOString().split("T")[0];
- 
-    const convertedTime = convertTo24Hour(clockIn);
- 
-      if (!convertedTime) {
-        liveTd.innerText = "--:--";
-        return;
-      }
- 
-      const startTime = new Date(`${today}T${convertedTime}`);
+    const startTime = parseClockInTime(clockIn, clockInIso);
+    if (!startTime || Number.isNaN(startTime.getTime())) {
+      liveTd.innerText = "00:00:00";
+      return;
+    }
     const diffMs = now - startTime;
  
     if (diffMs < 0) {
-      liveTd.innerText = "00:00";
+      liveTd.innerText = "00:00:00";
       return;
     }
  

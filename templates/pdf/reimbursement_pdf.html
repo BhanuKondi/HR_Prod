@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ reimbursement.request_no }} Summary</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #1f2d4d; margin: 24px; }
+        h1, h2, h3, p { margin: 0 0 10px; }
+        .header { border-bottom: 2px solid #1f6fff; padding-bottom: 12px; margin-bottom: 24px; }
+        .grid { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        .grid th, .grid td { border: 1px solid #d8e4f7; padding: 10px; text-align: left; vertical-align: top; }
+        .grid th { background: #eef5ff; width: 28%; }
+        .section-title { margin: 24px 0 12px; color: #1f6fff; font-size: 16px; }
+        .muted { color: #5d6f91; }
+        ul { margin: 0; padding-left: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Reimbursement Summary</h1>
+        <p class="muted">{{ reimbursement.request_no }} | Generated for {{ viewer_role.replace("_", " ").title() }}</p>
+    </div>
+
+    <table class="grid">
+        <tr><th>Employee</th><td>{{ reimbursement.employee.first_name }} {{ reimbursement.employee.last_name }}</td></tr>
+        <tr><th>Employee Code</th><td>{{ reimbursement.employee.emp_code }}</td></tr>
+        <tr><th>Type</th><td>{{ reimbursement.reimbursement_type.name if reimbursement.reimbursement_type else "-" }}</td></tr>
+        <tr><th>Bill Date</th><td>{{ reimbursement.bill_date.strftime("%d %b %Y") if reimbursement.bill_date else "-" }}</td></tr>
+        <tr><th>Requested Amount</th><td>{{ "%.2f"|format(reimbursement.requested_amount or 0) }}</td></tr>
+        <tr><th>Manager Approved Amount</th><td>{{ "%.2f"|format(reimbursement.manager_approved_amount or 0) }}</td></tr>
+        <tr><th>Finance Approved Amount</th><td>{{ "%.2f"|format(reimbursement.finance_approved_amount or 0) }}</td></tr>
+        <tr><th>Final Amount</th><td>{{ "%.2f"|format(reimbursement.final_amount or 0) }}</td></tr>
+        <tr><th>Status</th><td>{{ reimbursement.status.replace("_", " ").title() }}</td></tr>
+        <tr><th>Description</th><td>{{ reimbursement.description }}</td></tr>
+    </table>
+
+    <h3 class="section-title">Attachments</h3>
+    <ul>
+        {% for attachment in reimbursement.attachments %}
+        <li>{{ attachment.file_name }}</li>
+        {% else %}
+        <li>No attachments uploaded.</li>
+        {% endfor %}
+    </ul>
+
+    <h3 class="section-title">Manager Decision</h3>
+    <table class="grid">
+        <tr><th>Approver</th><td>{{ reimbursement.manager_approver.display_name or reimbursement.manager_approver.email if reimbursement.manager_approver else "-" }}</td></tr>
+        <tr><th>Comments</th><td>{{ reimbursement.manager_comments or "-" }}</td></tr>
+    </table>
+
+    <h3 class="section-title">Finance Decision</h3>
+    <table class="grid">
+        <tr><th>Approver</th><td>{{ reimbursement.finance_approver.display_name or reimbursement.finance_approver.email if reimbursement.finance_approver else "-" }}</td></tr>
+        <tr><th>Comments</th><td>{{ reimbursement.finance_comments or "-" }}</td></tr>
+        <tr><th>Payment Reference</th><td>{{ reimbursement.payment_reference or "-" }}</td></tr>
+        <tr><th>Payment Date</th><td>{{ reimbursement.payment_date.strftime("%d %b %Y") if reimbursement.payment_date else "-" }}</td></tr>
+    </table>
+</body>
+</html>

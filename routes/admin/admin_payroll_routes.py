@@ -1,508 +1,414 @@
-'''from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models.db import db
-from models.models import (
-    Employee,
-    Leavee,
-    EmployeeSalary,
-    PayrollRun,
-    Holiday,
-    Attendance
-)
-from sqlalchemy import extract, func
 import calendar
 from datetime import datetime
+
+from flask import Blueprint, jsonify, flash, redirect, render_template, request, url_for
+from sqlalchemy import extract, func
+
+from models.attendance import Attendance
+from models.db import db
+from models.models import Employee, EmployeeSalary, Leavee, PayrollDetails, PayrollRun
+from utils.authz import ROLE_ADMIN, require_roles
+from utils.loan_service import get_employee_loan_deduction, record_loan_repayments_for_month
+
 
 admin_payroll_bp = Blueprint(
     "admin_payroll",
     __name__,
-    url_prefix="/admin/payroll"
+    url_prefix="/admin/payroll",
 )
 
-# ======================================================
-# PAYROLL DASHBOARD
-# ======================================================
-@admin_payroll_bp.route("/", methods=["GET"])
-def payroll_dashboard():
-    return render_template("admin/payroll.html")
+
+@admin_payroll_bp.before_request
+def enforce_admin_role():
+    return require_roles(ROLE_ADMIN)
 
 
-# ======================================================
-# GENERATE PAY RUN
-# ======================================================
-@admin_payroll_bp.route("/generate", methods=["POST"])
-def generate_payrun():
-
-    pay_month = request.form.get("pay_month")
-
-    if not pay_month:
-        flash("Please select payroll month.", "danger")
-        return redirect(url_for("admin_payroll.payroll_dashboard"))
-
-    year, month = map(int, pay_month.split("-"))
-    days_in_month = calendar.monthrange(year, month)[1]
-
-    # -------------------------------
-    # Calculate Sundays
-    # -------------------------------
+def count_weekends(year, month):
     cal = calendar.Calendar()
-    sundays = sum(
-        1 for day in cal.itermonthdates(year, month)
-        if day.month == month and day.weekday() == 6
-    )
-
-    # -------------------------------
-    # Calculate Holidays
-    # -------------------------------
-    holidays = Holiday.query.filter(
-        extract("month", Holiday.date) == month,
-        extract("year", Holiday.date) == year
+    return sum(
+        1
+        for day in cal.itermonthdates(year, month)
+        if day.month == month and day.weekday() in (5, 6)
     ).count()
 
-    total_working_days = days_in_month - sundays - holidays
-    if total_working_days <= 0:
-        total_working_days = days_in_month
 
-    payroll_data = []
+def get_total_working_days(year, month):
+    total_days = calendar.monthrange(year, month)[1]
+    working_days = total_days - count_weekends(year, month)
+    return max(1, working_days)
 
-    employees = Employee.query.filter(Employee.status == "Active").all()
 
-    for emp in employees:
+def get_payrun(month, year):
+    return PayrollRun.query.filter_by(month=month, year=year).first()
 
-        salary = EmployeeSalary.query.filter_by(employee_id=emp.id).first()
-        if not salary:
-            continue
 
-        # -------------------------------
-        # Attendance Days (>=5 seconds)
-        # -------------------------------
-        attendance_days = db.session.query(
-            func.count(func.distinct(Attendance.date))
-        ).filter(
-            Attendance.user_id == emp.user_id,
-            extract("month", Attendance.date) == month,
-            extract("year", Attendance.date) == year,
-            Attendance.duration_seconds >= 5
-        ).scalar() or 0
-
-        # -------------------------------
-        # Paid Leaves (CL + SL)
-        # -------------------------------
-        paid_leave_days = db.session.query(
-            func.coalesce(func.sum(Leavee.total_days), 0)
-        ).filter(
-            Leavee.emp_code == emp.emp_code,
-            Leavee.leave_type.in_(["Casual Leave", "Sick Leave"]),
-            Leavee.status == "Approved",
-            extract("month", Leavee.start_date) == month,
-            extract("year", Leavee.start_date) == year
-        ).scalar() or 0
-
-        present_days = int(attendance_days + paid_leave_days)
-
-        # -------------------------------
-        # LWP Days
-        # -------------------------------
-        lwp_days = db.session.query(
-            func.coalesce(func.sum(Leavee.total_days), 0)
-        ).filter(
-            Leavee.emp_code == emp.emp_code,
-            Leavee.leave_type == "Leave Without Pay",
-            Leavee.status == "Approved",
-            extract("month", Leavee.start_date) == month,
-            extract("year", Leavee.start_date) == year
-        ).scalar() or 0
-
-        lwp_days = int(lwp_days)
-
-        # -------------------------------
-        # Absent Days
-        # -------------------------------
-        absent_days = int(paid_leave_days)
-        if absent_days < 0:
-            absent_days = 0
-
-        # ======================================================
-        # ✅ CORRECT SALARY CALCULATION
-        # ======================================================
-
-        annual_gross_salary = float(salary.gross_salary)
-
-        # Monthly salary
-        monthly_salary = round(annual_gross_salary / 12, 2)
-
-        # Per day salary
-        salary_per_day = round(monthly_salary / total_working_days, 2)
-
-        # LWP deduction
-        lwp_deduction = round(lwp_days * salary_per_day, 2)
-
-        # Net salary for the month
-        net_salary = round(monthly_salary - lwp_deduction, 2)
-        if net_salary < 0:
-            net_salary = 0
-
-        # -------------------------------
-        # Append Payroll Data
-        # -------------------------------
-        payroll_data.append({
-            "emp_code": emp.emp_code,
-            "name": f"{emp.first_name} {emp.last_name}",
-            "salary_month": f"{calendar.month_name[month]} {year}",
-
-            "total_working_days": total_working_days,
-            "attendance_days": attendance_days,
-            "paid_leave_days": paid_leave_days,
-            "present_days": present_days,
-            "lwp_days": lwp_days,
-            "absent_days": absent_days,
-
-            "annual_gross_salary": annual_gross_salary,
-            "monthly_salary": monthly_salary,
-            "salary_per_day": salary_per_day,
-            "lwp_deduction": lwp_deduction,
-            "net_salary": net_salary
-        })
-
-    # ======================================================
-    # CHECK PAYROLL APPROVAL STATUS
-    # ======================================================
-    payrun = PayrollRun.query.filter_by(
+def get_adjustment_record(employee_id, month, year):
+    return PayrollDetails.query.filter_by(
+        employee_id=employee_id,
         month=month,
-        year=year
+        year=year,
     ).first()
 
+
+def compute_salary_components(salary: EmployeeSalary):
+    monthly_gross = round(float(salary.gross_salary or 0) / 12, 2)
+    basic_percent = float(salary.basic_percent or 0)
+    hra_percent = float(salary.hra_percent or 0)
+    epf_percent = float(salary.epf_percent or 0)
+
+    basic = round(monthly_gross * (basic_percent / 100), 2)
+    hra = round(basic * (hra_percent / 100), 2)
+    fixed_allowance = round(float(salary.fixed_allowance or 0), 2)
+    medical = round(float(salary.medical_fixed or 0), 2)
+    driver = round(float(salary.driver_reimbursement or 0), 2)
+
+    special_allowance = round(monthly_gross - (basic + hra + fixed_allowance + medical + driver), 2)
+    if special_allowance < 0:
+        special_allowance = 0.0
+
+    # EPF with standard statutory wage ceiling assumption (₹15,000 wage base)
+    pf_wage_base = min(basic, 15000.0)
+    employee_pf = round(pf_wage_base * (epf_percent / 100), 2)
+    employer_pf = round(employee_pf, 2)
+    gratuity_provision = round(basic * 0.0481, 2)
+
+    return {
+        "monthly_gross": monthly_gross,
+        "basic": basic,
+        "hra": hra,
+        "fixed_allowance": fixed_allowance,
+        "medical_allowance": medical,
+        "driver_reimbursement": driver,
+        "special_allowance": special_allowance,
+        "employee_pf": employee_pf,
+        "employer_pf": employer_pf,
+        "gratuity_provision": gratuity_provision,
+        # place-holders (future configurable)
+        "professional_tax": 0.0,
+        "esi": 0.0,
+        "tds": 0.0,
+    }
+
+
+def calculate_employee_payroll(employee, month, year, total_working_days):
+    salary = EmployeeSalary.query.filter_by(employee_id=employee.id).first()
+    if not salary:
+        return None
+
+    attendance_days = db.session.query(
+        func.count(func.distinct(Attendance.date))
+    ).filter(
+        Attendance.user_id == employee.user_id,
+        extract("month", Attendance.date) == month,
+        extract("year", Attendance.date) == year,
+        Attendance.duration_seconds >= 5,
+    ).scalar() or 0
+
+    paid_leave_days = db.session.query(
+        func.coalesce(func.sum(Leavee.total_days), 0)
+    ).filter(
+        Leavee.emp_code == employee.emp_code,
+        Leavee.leave_type.in_(["Casual Leave", "Sick Leave"]),
+        Leavee.status == "Approved",
+        extract("month", Leavee.start_date) == month,
+        extract("year", Leavee.start_date) == year,
+    ).scalar() or 0
+
+    lwp_days = db.session.query(
+        func.coalesce(func.sum(Leavee.total_days), 0)
+    ).filter(
+        Leavee.emp_code == employee.emp_code,
+        Leavee.leave_type == "Leave Without Pay",
+        Leavee.status == "Approved",
+        extract("month", Leavee.start_date) == month,
+        extract("year", Leavee.start_date) == year,
+    ).scalar() or 0
+
+    present_days = int(attendance_days + paid_leave_days)
+    lwp_days = int(lwp_days)
+    absent_days = max(0, total_working_days - present_days - lwp_days)
+
+    components = compute_salary_components(salary)
+    monthly_salary = components["monthly_gross"]
+    salary_per_day = round(monthly_salary / total_working_days, 2)
+    lwp_deduction = round(lwp_days * salary_per_day, 2)
+    absent_deduction = round(absent_days * salary_per_day, 2)
+    loan_deduction_decimal, loan_breakdown = get_employee_loan_deduction(employee.id, month, year)
+    loan_deduction = round(float(loan_deduction_decimal), 2)
+    statutory_deductions = round(
+        components["employee_pf"] + components["professional_tax"] + components["esi"] + components["tds"], 2
+    )
+    total_deductions = round(lwp_deduction + absent_deduction + loan_deduction + statutory_deductions, 2)
+    base_net_salary = round(monthly_salary - total_deductions, 2)
+
+    payroll = get_adjustment_record(employee.id, month, year)
+    if not payroll:
+        payroll = PayrollDetails(
+            employee_id=employee.id,
+            month=month,
+            year=year,
+            net_salary=base_net_salary,
+            bonus=0,
+            deduction=0,
+            final_salary=base_net_salary,
+            comments="",
+        )
+        db.session.add(payroll)
+    else:
+        payroll.net_salary = base_net_salary
+
+    bonus = payroll.bonus or 0
+    deduction = payroll.deduction or 0
+    payroll.final_salary = round(base_net_salary + bonus - deduction, 2)
+
+    return {
+        "emp_code": employee.emp_code,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "salary_month": f"{calendar.month_name[month]} {year}",
+        "total_working_days": total_working_days,
+        "attendance_days": attendance_days,
+        "paid_leave_days": float(paid_leave_days),
+        "present_days": present_days,
+        "lwp_days": lwp_days,
+        "absent_days": absent_days,
+        "monthly_salary": monthly_salary,
+        "basic": components["basic"],
+        "hra": components["hra"],
+        "special_allowance": components["special_allowance"],
+        "fixed_allowance": components["fixed_allowance"],
+        "medical_allowance": components["medical_allowance"],
+        "driver_reimbursement": components["driver_reimbursement"],
+        "salary_per_day": salary_per_day,
+        "lwp_deduction": lwp_deduction,
+        "absent_deduction": absent_deduction,
+        "loan_deduction": loan_deduction,
+        "employee_pf": components["employee_pf"],
+        "professional_tax": components["professional_tax"],
+        "esi": components["esi"],
+        "tds": components["tds"],
+        "total_deductions": total_deductions,
+        "net_salary": base_net_salary,
+        "employer_pf": components["employer_pf"],
+        "gratuity_provision": components["gratuity_provision"],
+        "employer_monthly_cost": round(
+            monthly_salary + components["employer_pf"] + components["gratuity_provision"], 2
+        ),
+        "bonus": bonus,
+        "deduction": deduction,
+        "comments": payroll.comments or "",
+        "loan_summary": ", ".join(
+            f"{item['loan_no']} ({item['installment_number']}/{item['total_installments']})"
+            for item in loan_breakdown
+        ),
+        "final_salary": payroll.final_salary,
+    }
+
+
+def serialize_saved_payroll(employee, payroll, month, year):
+    salary = EmployeeSalary.query.filter_by(employee_id=employee.id).first()
+    components = compute_salary_components(salary) if salary else {
+        "monthly_gross": payroll.net_salary,
+        "basic": 0.0,
+        "hra": 0.0,
+        "special_allowance": 0.0,
+        "fixed_allowance": 0.0,
+        "medical_allowance": 0.0,
+        "driver_reimbursement": 0.0,
+        "employee_pf": 0.0,
+        "professional_tax": 0.0,
+        "esi": 0.0,
+        "tds": 0.0,
+        "employer_pf": 0.0,
+        "gratuity_provision": 0.0,
+    }
+    total_deductions = round(
+        float(components["employee_pf"] or 0)
+        + float(components["professional_tax"] or 0)
+        + float(components["esi"] or 0)
+        + float(components["tds"] or 0),
+        2,
+    )
+    return {
+        "emp_code": employee.emp_code,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "salary_month": f"{calendar.month_name[month]} {year}",
+        "total_working_days": "-",
+        "attendance_days": "-",
+        "paid_leave_days": "-",
+        "present_days": "-",
+        "lwp_days": "-",
+        "absent_days": "-",
+        "monthly_salary": components["monthly_gross"],
+        "basic": components["basic"],
+        "hra": components["hra"],
+        "special_allowance": components["special_allowance"],
+        "fixed_allowance": components["fixed_allowance"],
+        "medical_allowance": components["medical_allowance"],
+        "driver_reimbursement": components["driver_reimbursement"],
+        "salary_per_day": "-",
+        "lwp_deduction": "-",
+        "absent_deduction": "-",
+        "loan_deduction": float(get_employee_loan_deduction(employee.id, month, year)[0]),
+        "employee_pf": components["employee_pf"],
+        "professional_tax": components["professional_tax"],
+        "esi": components["esi"],
+        "tds": components["tds"],
+        "total_deductions": total_deductions,
+        "net_salary": payroll.net_salary,
+        "employer_pf": components["employer_pf"],
+        "gratuity_provision": components["gratuity_provision"],
+        "employer_monthly_cost": round(
+            float(components["monthly_gross"] or 0)
+            + float(components["employer_pf"] or 0)
+            + float(components["gratuity_provision"] or 0),
+            2,
+        ),
+        "bonus": payroll.bonus or 0,
+        "deduction": payroll.deduction or 0,
+        "comments": payroll.comments or "",
+        "final_salary": payroll.final_salary,
+    }
+
+
+def build_payroll_rows(month, year, save_calculated=False):
+    payrun = get_payrun(month, year)
     payroll_approved = payrun.approved if payrun else False
+    employees = Employee.query.filter(Employee.status == "Active").all()
+
+    if payroll_approved:
+        rows = []
+        for employee in employees:
+            payroll = get_adjustment_record(employee.id, month, year)
+            if payroll:
+                rows.append(serialize_saved_payroll(employee, payroll, month, year))
+        return rows, True
+
+    total_working_days = get_total_working_days(year, month)
+    rows = []
+    for employee in employees:
+        row = calculate_employee_payroll(employee, month, year, total_working_days)
+        if row:
+            rows.append(row)
+
+    if save_calculated:
+        db.session.commit()
+
+    return rows, False
+
+
+def parse_month_year_from_request():
+    pay_month = request.values.get("pay_month")
+    if pay_month:
+        year, month = map(int, pay_month.split("-"))
+        return month, year
+
+    month = request.values.get("month")
+    year = request.values.get("year")
+    if month and year:
+        return int(month), int(year)
+
+    return None, None
+
+
+@admin_payroll_bp.route("/", methods=["GET"])
+def payroll_dashboard():
+    month, year = parse_month_year_from_request()
+    payroll_data = None
+    payroll_approved = False
+
+    if month and year:
+        payroll_data, payroll_approved = build_payroll_rows(month, year, save_calculated=False)
 
     return render_template(
         "admin/payroll.html",
         payroll_data=payroll_data,
+        payroll_approved=payroll_approved,
         selected_month=month,
         selected_year=year,
-        payroll_approved=payroll_approved
     )
 
 
-# ======================================================
-# APPROVE PAY RUN
-# ======================================================
+@admin_payroll_bp.route("/generate", methods=["POST"])
+def generate_payrun():
+    month, year = parse_month_year_from_request()
+    if not month or not year:
+        flash("Please select payroll month.", "danger")
+        return redirect(url_for("admin_payroll.payroll_dashboard"))
+
+    payroll_data, payroll_approved = build_payroll_rows(month, year, save_calculated=True)
+    if payroll_approved:
+        flash("Payroll already approved for the selected month.", "info")
+
+    return render_template(
+        "admin/payroll.html",
+        payroll_data=payroll_data,
+        payroll_approved=payroll_approved,
+        selected_month=month,
+        selected_year=year,
+    )
+
+
 @admin_payroll_bp.route("/approve", methods=["POST"])
 def approve_payrun():
+    month, year = parse_month_year_from_request()
+    if not month or not year:
+        flash("Payroll month is required.", "danger")
+        return redirect(url_for("admin_payroll.payroll_dashboard"))
 
-    month = int(request.form.get("month"))
-    year = int(request.form.get("year"))
-
-    payrun = PayrollRun.query.filter_by(
-        month=month,
-        year=year
-    ).first()
-
+    payrun = get_payrun(month, year)
     if not payrun:
-        payrun = PayrollRun(
-            month=month,
-            year=year,
-            approved=True,
-            approved_at=datetime.utcnow()
-        )
+        payrun = PayrollRun(month=month, year=year, approved=True, approved_at=datetime.utcnow())
         db.session.add(payrun)
     else:
         payrun.approved = True
         payrun.approved_at = datetime.utcnow()
 
+    record_loan_repayments_for_month(month, year)
     db.session.commit()
+    flash("Payroll approved!", "success")
+    return redirect(url_for("admin_payroll.payroll_dashboard", pay_month=f"{year}-{month:02d}"))
 
-    flash("Payroll approved successfully!", "success")
-    return redirect(url_for("admin_payroll.payroll_dashboard"))
-'''
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models.db import db
-from models.models import (
-    Employee,
-    Leavee,
-    EmployeeSalary,
-    PayrollRun,
-    Holiday,
-    Attendance
-)
-from sqlalchemy import extract, func
-import calendar
-from datetime import datetime
- 
-from models.models import PayrollDetails
- 
-admin_payroll_bp = Blueprint(
-    "admin_payroll",
-    __name__,
-    url_prefix="/admin/payroll"
-)
- 
-# ======================================================
-# PAYROLL DASHBOARD
-# ======================================================
-@admin_payroll_bp.route("/", methods=["GET"])
-def payroll_dashboard():
-    return render_template("admin/payroll.html")
- 
- 
-# ======================================================
-# GENERATE PAY RUN
-# ======================================================
-@admin_payroll_bp.route("/generate", methods=["POST"])
-def generate_payrun():
- 
-    pay_month = request.form.get("pay_month")
- 
-    if not pay_month:
-        flash("Please select payroll month.", "danger")
-        return redirect(url_for("admin_payroll.payroll_dashboard"))
- 
-    year, month = map(int, pay_month.split("-"))
-    days_in_month = calendar.monthrange(year, month)[1]
- 
-    # -------------------------------
-    # Calculate Sundays
-    # -------------------------------
-    cal = calendar.Calendar()
-    sundays = sum(
-        1 for day in cal.itermonthdates(year, month)
-        if day.month == month and day.weekday() == 6
-    )
- 
-    # -------------------------------
-    # Calculate Holidays
-    # -------------------------------
-    holidays = Holiday.query.filter(
-        extract("month", Holiday.date) == month,
-        extract("year", Holiday.date) == year
-    ).count()
- 
-    total_working_days = days_in_month - sundays - holidays
-    if total_working_days <= 0:
-        total_working_days = days_in_month
- 
-    payroll_data = []
- 
-    employees = Employee.query.filter(Employee.status == "Active").all()
- 
-    for emp in employees:
- 
-        salary = EmployeeSalary.query.filter_by(employee_id=emp.id).first()
-        if not salary:
-            continue
- 
-        # -------------------------------
-        # Attendance Days (>=5 seconds)
-        # -------------------------------
-        attendance_days = db.session.query(
-            func.count(func.distinct(Attendance.date))
-        ).filter(
-            Attendance.user_id == emp.user_id,
-            extract("month", Attendance.date) == month,
-            extract("year", Attendance.date) == year,
-            Attendance.duration_seconds >= 5
-        ).scalar() or 0
- 
-        # -------------------------------
-        # Paid Leaves (CL + SL)
-        # -------------------------------
-        paid_leave_days = db.session.query(
-            func.coalesce(func.sum(Leavee.total_days), 0)
-        ).filter(
-            Leavee.emp_code == emp.emp_code,
-            Leavee.leave_type.in_(["Casual Leave", "Sick Leave"]),
-            Leavee.status == "Approved",
-            extract("month", Leavee.start_date) == month,
-            extract("year", Leavee.start_date) == year
-        ).scalar() or 0
- 
-        present_days = int(attendance_days + paid_leave_days)
- 
-        # -------------------------------
-        # LWP Days
-        # -------------------------------
-        lwp_days = db.session.query(
-            func.coalesce(func.sum(Leavee.total_days), 0)
-        ).filter(
-            Leavee.emp_code == emp.emp_code,
-            Leavee.leave_type == "Leave Without Pay",
-            Leavee.status == "Approved",
-            extract("month", Leavee.start_date) == month,
-            extract("year", Leavee.start_date) == year
-        ).scalar() or 0
- 
-        lwp_days = int(lwp_days)
- 
-        # -------------------------------
-        # Absent Days
-        # -------------------------------
-        absent_days = int(paid_leave_days)
-        if absent_days < 0:
-            absent_days = 0
- 
-        # ======================================================
-        # ✅ CORRECT SALARY CALCULATION
-        # ======================================================
- 
-        annual_gross_salary = float(salary.gross_salary)
- 
-        # Monthly salary
-        monthly_salary = round(annual_gross_salary / 12, 2)
- 
-        # Per day salary
-        salary_per_day = round(monthly_salary / total_working_days, 2)
- 
-        # LWP deduction
-        lwp_deduction = round(lwp_days * salary_per_day, 2)
-        total_absent_days_deduction=total_working_days-present_days-lwp_days
-        deds=round(total_absent_days_deduction*salary_per_day,2)
- 
-        # Net salary for the month
-        net_salary = round(monthly_salary - lwp_deduction, 2)
-        if net_salary < 0:
-          net_salary = 0
- 
-# ===============================
-# SAVE / FETCH payroll_details
-# ===============================
-        payroll = PayrollDetails.query.filter_by(
-            employee_id=emp.id,
-            month=month,
-            year=year
-        ).first()
- 
-        if payroll:
-            payroll.net_salary = net_salary
-            # optionally update final_salary if bonus/deduction exist
-            payroll.final_salary = payroll.net_salary + payroll.bonus - payroll.deduction
-        else:
-            payroll = PayrollDetails(
-                employee_id=emp.id,
-                month=month,
-                year=year,
-                net_salary=net_salary,
-                bonus=0,
-                deduction=0,
-                final_salary=net_salary
-            )
-            db.session.add(payroll)
-        # ===============================
-    # FINAL SALARY
-    # ===============================
- 
-        bonus = payroll.bonus if payroll.bonus else 0
-        deduction = payroll.deduction if payroll.deduction else 0
- 
-        final_salary1 = net_salary + bonus - deduction
- 
-        # -------------------------------
-        # Append Payroll Data
-        # -------------------------------
-        payroll_data.append({
-            "emp_code": emp.emp_code,
-            "name": f"{emp.first_name} {emp.last_name}",
-            "salary_month": f"{calendar.month_name[month]} {year}",
- 
-            "total_working_days": total_working_days,
-            "attendance_days": attendance_days,
-            "paid_leave_days": paid_leave_days,
-            "present_days": present_days,
-            "lwp_days": lwp_days,
-            "absent_days": absent_days,
- 
-            "annual_gross_salary": annual_gross_salary,
-            "monthly_salary": monthly_salary,
-            "salary_per_day": salary_per_day,
-            "lwp_deduction": lwp_deduction,
-            "net_salary": round(monthly_salary+bonus-deds,2),
-            "bonus": bonus,
-            "deduction": deduction,
-            "final_salary": round(monthly_salary+bonus-deds,2)
- 
-            })
- 
-    # ======================================================
-    # CHECK PAYROLL APPROVAL STATUS
-    # ======================================================
-    payrun = PayrollRun.query.filter_by(
-        month=month,
-        year=year
-    ).first()
- 
-    payroll_approved = payrun.approved if payrun else False
-    db.session.commit()
-    return render_template(
-        "admin/payroll.html",
-        payroll_data=payroll_data,
-        selected_month=month,
-        selected_year=year,
-        payroll_approved=payroll_approved
-    )
- 
- 
-# ======================================================
-# APPROVE PAY RUN
-# ======================================================
-@admin_payroll_bp.route("/approve", methods=["POST"])
-def approve_payrun():
- 
-    month = int(request.form.get("month"))
-    year = int(request.form.get("year"))
- 
-    payrun = PayrollRun.query.filter_by(
-        month=month,
-        year=year
-    ).first()
- 
-    if not payrun:
-        payrun = PayrollRun(
-            month=month,
-            year=year,
-            approved=True,
-            approved_at=datetime.utcnow()
-        )
-        db.session.add(payrun)
-    else:
-        payrun.approved = True
-        payrun.approved_at = datetime.utcnow()
- 
-    db.session.commit()
- 
-    flash("Payroll approved successfully!", "success")
-    return redirect(url_for("admin_payroll.payroll_dashboard"))
- 
-# ======================================================
-# UPDATE BONUS & DEDUCTION
-# ======================================================
+
 @admin_payroll_bp.route("/update-adjustments", methods=["POST"])
 def update_adjustments():
+    month, year = parse_month_year_from_request()
+    if not month or not year:
+        return "Payroll month is required.", 400
 
-    month = int(request.form.get("month"))
-    year = int(request.form.get("year"))
+    payrun = get_payrun(month, year)
+    if payrun and payrun.approved:
+        return "Payroll locked!", 403
 
-    employees = Employee.query.all()
+    employees = Employee.query.filter(Employee.status == "Active").all()
+    for employee in employees:
+        payroll = get_adjustment_record(employee.id, month, year)
+        if not payroll:
+            continue
 
-    for emp in employees:
-
-        bonus = request.form.get(f"bonus_{emp.emp_code}")
-        deduction = request.form.get(f"deduction_{emp.emp_code}")
-        comment = request.form.get(f"comments_{emp.emp_code}")  # ✅ NEW
-
-        bonus = float(bonus) if bonus else 0
-        deduction = float(deduction) if deduction else 0
-
-        payroll = PayrollDetails.query.filter_by(
-            employee_id=emp.id,
-            month=month,
-            year=year
-        ).first()
-
-        if payroll:
-            payroll.bonus = bonus
-            payroll.deduction = deduction
-            payroll.comments = comment  # 🔥 SAVE COMMENTS
-
-            payroll.final_salary = payroll.net_salary + bonus - deduction
+        payroll.bonus = float(request.form.get(f"bonus_{employee.emp_code}") or 0)
+        payroll.deduction = float(request.form.get(f"deduction_{employee.emp_code}") or 0)
+        payroll.comments = request.form.get(f"comments_{employee.emp_code}") or ""
+        payroll.final_salary = round(payroll.net_salary + payroll.bonus - payroll.deduction, 2)
 
     db.session.commit()
-
-    flash("Bonus, Deduction & Comments updated successfully!", "success")
     return "", 200
+
+
+@admin_payroll_bp.route("/get-data", methods=["GET", "POST"])
+def get_payroll_data():
+    month, year = parse_month_year_from_request()
+    if not month or not year:
+        return jsonify({"approved": False, "data": []}), 400
+
+    payroll_data, payroll_approved = build_payroll_rows(month, year, save_calculated=False)
+    return jsonify({"approved": payroll_approved, "data": payroll_data})
+
+
+@admin_payroll_bp.route("/check-status", methods=["GET"])
+def check_status():
+    month, year = parse_month_year_from_request()
+    if not month or not year:
+        return jsonify({"approved": False}), 400
+
+    payrun = get_payrun(month, year)
+    return jsonify({"approved": payrun.approved if payrun else False})

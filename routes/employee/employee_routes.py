@@ -1,43 +1,69 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from models.db import db
-from models.models import Employee, User, Leave
+from models.models import Employee, User, Leavee
 from models.attendance import Attendance, IST
 from datetime import datetime, date
-from functools import wraps
-import uuid
+from utils.authz import ROLE_EMPLOYEE, employee_required, get_current_employee, require_roles
+from utils.profile_photos import get_profile_photo_url, save_profile_photo
 
 employee_bp = Blueprint("employee", __name__, url_prefix="/employee")
 
 # ------------------------ Helper: Get logged-in employee ------------------------
 def current_employee():
-    user_id = session.get("user_id")
-    if not user_id:
-        return None
-    return Employee.query.filter_by(user_id=user_id).first()
+    return get_current_employee()
 
 # ------------------------ Login Required Decorator ------------------------
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            flash("Please login first.", "warning")
-            return redirect("/login")
-        return f(*args, **kwargs)
-    return decorated_function
+login_required = employee_required
+
+
+@employee_bp.before_request
+def enforce_employee_role():
+    return require_roles(ROLE_EMPLOYEE)
 
 # ------------------------ Dashboard ------------------------
 @employee_bp.route("/dashboard")
 @login_required
 def dashboard():
     emp = current_employee()
-    return render_template("employee/dashboard.html", employee=emp)
+    today = date.today()
+    attendance_logs = (
+        Attendance.query.filter_by(user_id=emp.user_id, date=today)
+        .order_by(Attendance.transaction_no.desc())
+        .all()
+    )
+    pending_leaves = Leavee.query.filter(
+        Leavee.emp_code == emp.emp_code,
+        Leavee.status.in_(["PENDING_L1", "PENDING_L2"]),
+    ).count()
+    approved_leaves = Leavee.query.filter_by(emp_code=emp.emp_code, status="APPROVED").count()
+
+    summary = {
+        "today_sessions": len(attendance_logs),
+        "pending_leaves": pending_leaves,
+        "approved_leaves": approved_leaves,
+        "total_worked_seconds": sum(log.duration_seconds or 0 for log in attendance_logs),
+    }
+
+    return render_template(
+        "employee/dashboard.html",
+        employee=emp,
+        summary=summary,
+        attendance_logs=attendance_logs,
+    )
 
 # ------------------------ Profile ------------------------
 @employee_bp.route("/profile", methods=["GET"])
 @login_required
 def profile():
     emp = current_employee()
-    return render_template("employee/profile.html", employee=emp)
+    display_name = emp.user.display_name if emp.user and emp.user.display_name else f"{emp.first_name} {emp.last_name}"
+    initials = "".join(part[0] for part in display_name.split()[:2]).upper() if display_name else "U"
+    return render_template(
+        "employee/profile.html",
+        employee=emp,
+        profile_photo_url=get_profile_photo_url(emp.user_id),
+        profile_initials=initials,
+    )
 
 @employee_bp.route("/profile/edit", methods=["POST"])
 @login_required
@@ -47,6 +73,7 @@ def profile_edit():
     phone = request.form.get("phone")
     address = request.form.get("address")
     display_name = request.form.get("display_name")
+    profile_photo = request.files.get("profile_photo")
 
     if phone:
         emp.phone = phone
@@ -55,6 +82,15 @@ def profile_edit():
     if display_name:
         user = User.query.get(emp.user_id)
         user.display_name = display_name
+    if profile_photo and profile_photo.filename:
+        saved_path = save_profile_photo(emp.user_id, profile_photo)
+        if saved_path:
+            user = User.query.get(emp.user_id)
+            user.profile_photo_path = saved_path
+            flash("Profile photo updated successfully.", "success")
+        else:
+            flash("Profile photo must be PNG, JPG, JPEG, or WEBP.", "danger")
+            return redirect(url_for("employee.profile"))
 
     db.session.commit()
     flash("Profile updated successfully.", "success")
@@ -64,77 +100,13 @@ def profile_edit():
 @employee_bp.route("/leave_management")
 @login_required
 def leave_management():
-    emp = current_employee()
-    if not emp:
-        return redirect("/login")
-
-    allocated = getattr(emp, "allocated_leaves", 12)
-
-    # All leave types
-    leave_types = LeaveType.query.all()
-    # All leaves of employee
-    leaves = Leave.query.filter_by(employee_id=emp.id).order_by(Leave.submitted_at.desc()).all()
-
-    # Determine if "Track Leave Requests" should be shown
-    show_track = request.args.get("show_track", "False") == "True"
-
-    return render_template(
-        "employee/leave_management.html",
-        employee=emp,
-        allocated=allocated,
-        leave_types=leave_types,
-        leaves=leaves,
-        show_track=show_track
-    )
+    return redirect(url_for("employee_leaves.leave_management"))
 
 @employee_bp.route("/leave_management/apply", methods=["POST"])
 @login_required
 def leave_apply():
-    emp = current_employee()
-    if not emp:
-        return redirect("/login")
-
-    leave_type_id = request.form.get("leave_type_id")
-    start_date_str = request.form.get("start_date")
-    end_date_str = request.form.get("end_date")
-    reason = request.form.get("reason")
-
-    if not all([leave_type_id, start_date_str, end_date_str, reason]):
-        flash("All fields are required.", "danger")
-        return redirect(url_for("employee.leave_management"))
-
-    try:
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
-    except ValueError:
-        flash("Invalid date format. Use YYYY-MM-DD.", "danger")
-        return redirect(url_for("employee.leave_management"))
-
-    if start_date > end_date:
-        flash("End date cannot be before start date.", "danger")
-        return redirect(url_for("employee.leave_management"))
-
-    # Calculate days count (full days only)
-    days_count = (end_date - start_date).days + 1
-
-    new_leave = Leave(
-        leave_uid=str(uuid.uuid4()),
-        employee_id=emp.id,
-        leave_type_id=leave_type_id,
-        start_date=start_date,
-        end_date=end_date,
-        days_count=days_count,
-        reason=reason,
-        status="Pending_L1",
-        submitted_at=datetime.utcnow()
-    )
-
-    db.session.add(new_leave)
-    db.session.commit()
-
-    flash("Leave request submitted successfully.", "success")
-    # Redirect to leave management and show track section
-    return redirect(url_for("employee.leave_management", show_track="True"))
+    flash("Leave requests are now handled from the unified leave management page.", "info")
+    return redirect(url_for("employee_leaves.leave_management"))
 
 # ------------------------ Attendance ------------------------
 @employee_bp.route("/attendance")
@@ -148,23 +120,42 @@ def attendance_page():
 @login_required
 def clock_in():
     emp = current_employee()
-    today = date.today()
+    now = datetime.now(IST)
+    shift_start, shift_end = Attendance.get_shift_datetime(now)
+    today = Attendance.get_shift_date(now)
+
+    active = Attendance.query.filter_by(
+        user_id=emp.user_id,
+        clock_out=None,
+    ).first()
+    if active:
+        return jsonify({
+            "success": True,
+            "message": "Already clocked in",
+            "log_id": active.id,
+            "active": True,
+            "clock_in": active.clock_in.isoformat() if active.clock_in else None,
+        }), 200
 
     count_today = Attendance.query.filter_by(user_id=emp.user_id, date=today).count()
-    now = datetime.now(IST)
 
     new_log = Attendance(
         user_id=emp.user_id,
         date=today,
         transaction_no=count_today + 1,
-        clock_in=now
+        clock_in=now,
+        shift_start=shift_start,
+        shift_end=shift_end,
     )
 
     db.session.add(new_log)
     db.session.commit()
 
-    flash("Clock-in successful.", "success")
-    return redirect(url_for("employee.attendance_page"))
+    return jsonify({
+        "success": True,
+        "message": "Clock-in successful",
+        "log_id": new_log.id,
+    })
 
 @employee_bp.route("/attendance/clock_out/<int:log_id>", methods=["POST"])
 @login_required

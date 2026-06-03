@@ -1,33 +1,90 @@
 {% extends "employee/employee_base.html" %}
 {% block content %}
-<h2>My Profile</h2>
+<div class="page-header">
+  <p class="eyebrow mb-2">Personal Details</p>
+  <h2 class="fw-bold mb-1">My Profile</h2>
+  <p class="text-muted mb-0">Review your basic information and keep your contact details up to date.</p>
+</div>
 
-<form method="post" action="{{ url_for('employee.profile_edit') }}">
-  <div class="mb-2">
-    <label class="form-label">Display name</label>
-    <input class="form-control" name="display_name" value="{{ employee.user.display_name if employee.user else '' }}">
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="summary-card summary-card-accent h-100 profile-identity-card">
+      <span class="summary-label">Employee Snapshot</span>
+      <div class="profile-avatar-frame">
+        {% if profile_photo_url %}
+        <img src="{{ profile_photo_url }}" alt="{{ employee.first_name }} {{ employee.last_name }}" class="profile-avatar-image">
+        {% else %}
+        <div class="profile-avatar-fallback">{{ profile_initials }}</div>
+        {% endif %}
+      </div>
+      <h3 class="mb-2">{{ employee.first_name }} {{ employee.last_name }}</h3>
+      <p class="mb-2">{{ employee.job_title or "Employee" }}</p>
+      <p class="mb-0">{{ employee.work_email }}</p>
+    </div>
   </div>
 
-  <div class="mb-2">
-    <label class="form-label">First name</label>
-    <input class="form-control" disabled value="{{ employee.first_name }}">
-  </div>
+  <div class="col-lg-8">
+    <div class="card border-0">
+      <div class="card-body p-4">
+        <form method="post" action="{{ url_for('employee.profile_edit') }}" enctype="multipart/form-data">
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="profile-photo-upload">
+                <div>
+                  <h6 class="mb-1">Profile Photo</h6>
+                  <p class="text-muted mb-0">Upload a clear photo so your profile and future people views feel more personal.</p>
+                </div>
+                <div class="profile-upload-action">
+                  <input class="profile-file-input" id="employeeProfilePhoto" type="file" name="profile_photo" accept=".png,.jpg,.jpeg,.webp">
+                  <label class="btn btn-outline-primary profile-upload-trigger" for="employeeProfilePhoto">Choose Photo</label>
+                  <span class="profile-upload-name" data-upload-name>No file chosen</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Display name</label>
+              <input class="form-control" name="display_name" value="{{ employee.user.display_name if employee.user else '' }}">
+            </div>
 
-  <div class="mb-2">
-    <label class="form-label">Last name</label>
-    <input class="form-control" disabled value="{{ employee.last_name }}">
-  </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone</label>
+              <input class="form-control" name="phone" value="{{ employee.phone or '' }}">
+            </div>
 
-  <div class="mb-2">
-    <label class="form-label">Phone</label>
-    <input class="form-control" name="phone" value="{{ employee.phone or '' }}">
-  </div>
+            <div class="col-md-6">
+              <label class="form-label">First name</label>
+              <input class="form-control" disabled value="{{ employee.first_name }}">
+            </div>
 
-  <div class="mb-2">
-    <label class="form-label">Address</label>
-    <textarea class="form-control" name="address">{{ employee.address or '' }}</textarea>
-  </div>
+            <div class="col-md-6">
+              <label class="form-label">Last name</label>
+              <input class="form-control" disabled value="{{ employee.last_name }}">
+            </div>
 
-  <button class="btn btn-primary">Save</button>
-</form>
+            <div class="col-12">
+              <label class="form-label">Address</label>
+              <textarea class="form-control" rows="4" name="address">{{ employee.address or '' }}</textarea>
+            </div>
+
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-primary px-4">Save Changes</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".profile-file-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const fileNameNode = input.closest(".profile-upload-action")?.querySelector("[data-upload-name]");
+      if (!fileNameNode) return;
+      fileNameNode.textContent = input.files && input.files.length ? input.files[0].name : "No file chosen";
+    });
+  });
+});
+</script>
 {% endblock %}

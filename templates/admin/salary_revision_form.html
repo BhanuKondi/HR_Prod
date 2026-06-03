@@ -1,0 +1,46 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+  <div>
+    <p class="eyebrow mb-2">Payroll Control</p>
+    <h2 class="fw-bold mb-1">New Salary Revision</h2>
+    <p class="text-muted mb-0">Submit salary changes for fixed approver review.</p>
+  </div>
+</div>
+
+<div class="section-card">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Employee</label>
+        <select class="form-select" name="employee_id" required>
+          <option value="">Select employee</option>
+          {% for emp in employees %}
+            <option value="{{ emp.id }}">{{ emp.emp_code }} - {{ emp.first_name }} {{ emp.last_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Effective From Month</label>
+        <input type="month" name="effective_from_month" class="form-control" required>
+      </div>
+      <div class="col-md-4"><label class="form-label">Gross Salary (Annual)</label><input type="number" step="0.01" min="0" name="gross_salary" class="form-control" required></div>
+      <div class="col-md-4"><label class="form-label">Basic %</label><input type="number" step="0.01" min="0" name="basic_percent" class="form-control" required></div>
+      <div class="col-md-4"><label class="form-label">HRA % (of Basic)</label><input type="number" step="0.01" min="0" name="hra_percent" class="form-control" required></div>
+      <div class="col-md-4"><label class="form-label">Fixed Allowance</label><input type="number" step="0.01" min="0" name="fixed_allowance" class="form-control" value="0"></div>
+      <div class="col-md-4"><label class="form-label">Medical Fixed</label><input type="number" step="0.01" min="0" name="medical_fixed" class="form-control" value="0"></div>
+      <div class="col-md-4"><label class="form-label">Driver Reimbursement</label><input type="number" step="0.01" min="0" name="driver_reimbursement" class="form-control" value="0"></div>
+      <div class="col-md-4"><label class="form-label">EPF %</label><input type="number" step="0.01" min="0" name="epf_percent" class="form-control" value="12"></div>
+      <div class="col-12">
+        <label class="form-label">Reason</label>
+        <textarea name="reason" rows="3" class="form-control" required></textarea>
+      </div>
+      <div class="col-12 d-flex gap-2 justify-content-end">
+        <button class="btn btn-outline-secondary" type="submit" name="form_action" value="draft">Save Draft</button>
+        <button class="btn btn-primary" type="submit" name="form_action" value="submit">Submit For Approval</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

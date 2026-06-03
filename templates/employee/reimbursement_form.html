@@ -1,0 +1,155 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Expense Claims</p>
+        <h2 class="fw-bold mb-1">New Reimbursement</h2>
+        <p class="text-muted mb-0">Upload bills, describe the expense, and send the request into the approval workflow.</p>
+    </div>
+</div>
+
+<form action="{{ url_for('employee_reimbursements.create_reimbursement') }}" method="POST" enctype="multipart/form-data" class="section-card">
+    <div class="row g-4">
+        <div class="col-md-6">
+            <label class="form-label">Reimbursement Type</label>
+            <select class="form-select" name="reimbursement_type_id" required>
+                <option value="">Select a type</option>
+                {% for item in reimbursement_types %}
+                <option value="{{ item.id }}">{{ item.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Company</label>
+            <select class="form-select" name="company_id" required>
+                <option value="">Select company</option>
+                {% for company in companies %}
+                <option value="{{ company.id }}">{{ company.display_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Bill Date</label>
+            <input type="date" class="form-control" name="bill_date" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Requested Amount</label>
+            <input type="number" class="form-control" name="requested_amount" step="0.01" min="0.01" required>
+        </div>
+        <div class="col-12">
+            <label class="form-label">Business Description</label>
+            <textarea class="form-control" name="description" rows="4" placeholder="What was purchased, why it was needed, and any useful reimbursement context." required></textarea>
+        </div>
+        <div class="col-12 d-none" id="directorRentFields">
+            <div class="section-card p-3">
+                <h6 class="mb-3">Director House Rent Details</h6>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Rent Month</label>
+                        <input type="month" class="form-control" id="rentMonth" name="rent_month">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Period From</label>
+                        <input type="date" class="form-control" id="rentFrom" name="rent_period_from">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Period To</label>
+                        <input type="date" class="form-control" id="rentTo" name="rent_period_to">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Property City</label>
+                        <input type="text" class="form-control" id="propertyCity" name="property_city" placeholder="Hyderabad">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Owner Name</label>
+                        <input type="text" class="form-control" id="ownerName" name="owner_name" placeholder="Owner / Landlord name">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Lease / Agreement Ref</label>
+                        <input type="text" class="form-control" id="agreementRef" name="agreement_ref" placeholder="Agreement number">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control" id="rentNotes" name="rent_notes" placeholder="Any additional details">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <label class="form-label">Bills / Receipts</label>
+            <input type="file" class="form-control" name="attachments" accept="{{ allowed_attachment_accept }}" {% if config.allow_multiple_attachments %}multiple{% endif %} required>
+            <div class="form-text">Allowed formats: {{ allowed_attachment_label }}.</div>
+            <div class="form-text">Accepted files: PDF, PNG, JPG, JPEG, WEBP.</div>
+        </div>
+    </div>
+
+    <div class="modal-footer-strip mt-4">
+        <p class="modal-footer-copy">
+            The request will route to
+            {% if config.approver_mode == 'fixed_approver' %}the configured reimbursement approver{% else %}your reporting manager{% endif %}
+            and then to finance after approval. Director House Rent auto-routes to Account Admin when submitter and approver are the same person.
+        </p>
+        <div class="d-flex gap-2">
+            <button type="submit" name="form_action" value="draft" class="btn btn-outline-primary btn-sm px-3 py-2">Save Draft</button>
+            <button type="submit" name="form_action" value="submit" class="btn btn-primary btn-sm px-3 py-2">Submit Request</button>
+        </div>
+    </div>
+</form>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.querySelector('form[action*="reimbursements/create"]');
+  const typeSelect = form?.querySelector('select[name="reimbursement_type_id"]');
+  const description = form?.querySelector('textarea[name="description"]');
+  const rentSection = document.getElementById("directorRentFields");
+  const rentFieldIds = ["rentMonth", "rentFrom", "rentTo", "propertyCity", "ownerName", "agreementRef", "rentNotes"];
+
+  function isDirectorHouseRentSelected() {
+    if (!typeSelect) return false;
+    const text = typeSelect.options[typeSelect.selectedIndex]?.text?.toLowerCase() || "";
+    return text.includes("director house rent") || text.includes("owner expense");
+  }
+
+  function toggleDirectorRentFields() {
+    const enabled = isDirectorHouseRentSelected();
+    if (!rentSection) return;
+    rentSection.classList.toggle("d-none", !enabled);
+    rentFieldIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (enabled && (id === "rentMonth" || id === "rentFrom" || id === "rentTo")) {
+        el.setAttribute("required", "required");
+      } else {
+        el.removeAttribute("required");
+      }
+    });
+  }
+
+  typeSelect?.addEventListener("change", toggleDirectorRentFields);
+  toggleDirectorRentFields();
+
+  form?.addEventListener("submit", () => {
+    if (!isDirectorHouseRentSelected() || !description) return;
+    const payload = {
+      rentMonth: document.getElementById("rentMonth")?.value || "-",
+      periodFrom: document.getElementById("rentFrom")?.value || "-",
+      periodTo: document.getElementById("rentTo")?.value || "-",
+      propertyCity: document.getElementById("propertyCity")?.value || "-",
+      ownerName: document.getElementById("ownerName")?.value || "-",
+      agreementRef: document.getElementById("agreementRef")?.value || "-",
+      notes: document.getElementById("rentNotes")?.value || "-",
+    };
+    const block =
+      `\n\n[Director House Rent Details]\n` +
+      `Rent Month: ${payload.rentMonth}\n` +
+      `Period: ${payload.periodFrom} to ${payload.periodTo}\n` +
+      `Property City: ${payload.propertyCity}\n` +
+      `Owner Name: ${payload.ownerName}\n` +
+      `Agreement Ref: ${payload.agreementRef}\n` +
+      `Notes: ${payload.notes}`;
+    if (!description.value.includes("[Director House Rent Details]")) {
+      description.value = `${description.value.trim()}${block}`.trim();
+    }
+  });
+});
+</script>
+{% endblock %}

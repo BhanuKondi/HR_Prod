@@ -1,0 +1,66 @@
+{% extends "manager/manager_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Employee Loans</p>
+        <h2 class="fw-bold mb-1">Loan Approvals</h2>
+        <p class="text-muted mb-0">Review employee loan requests assigned to you and forward approved requests to finance.</p>
+    </div>
+    <div class="hero-metrics">
+        <a class="hero-metric {% if status_filter == 'pending' %}active{% endif %}" href="{{ url_for('manager_loans.list_loans', status_filter='pending') }}">
+            <span>Pending Approval</span><strong>{{ summary.pending }}</strong>
+        </a>
+        <a class="hero-metric {% if status_filter == 'approved' %}active{% endif %}" href="{{ url_for('manager_loans.list_loans', status_filter='approved') }}">
+            <span>Approved</span><strong>{{ summary.approved }}</strong>
+        </a>
+        <a class="hero-metric {% if status_filter == 'rejected' %}active{% endif %}" href="{{ url_for('manager_loans.list_loans', status_filter='rejected') }}">
+            <span>Rejected</span><strong>{{ summary.rejected }}</strong>
+        </a>
+        <a class="hero-metric {% if status_filter == 'all' %}active{% endif %}" href="{{ url_for('manager_loans.list_loans', status_filter='all') }}">
+            <span>All</span><strong>{{ summary.all }}</strong>
+        </a>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Loan No</th>
+                    <th>Employee</th>
+                    <th>Requested</th>
+                    <th>Installments</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in loans %}
+                <tr>
+                    <td>{{ loan.loan_no }}</td>
+                    <td>{{ loan.employee.first_name }} {{ loan.employee.last_name }}</td>
+                    <td>{{ "%.2f"|format(loan.requested_amount or 0) }}</td>
+                    <td>{{ loan.total_installments }}</td>
+                    <td>{{ loan.status.replace("_", " ").title() }}</td>
+                    <td><a href="{{ url_for('manager_loans.view_loan', loan_id=loan.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No loan requests assigned to you.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.hero-metrics .hero-metric {
+    text-decoration: none;
+    cursor: pointer;
+}
+.hero-metrics .hero-metric.active {
+    border: 2px solid var(--brand-primary);
+    box-shadow: 0 10px 24px rgba(13, 110, 253, 0.14);
+}
+</style>
+{% endblock %}

@@ -2,74 +2,89 @@
 {% block title %}My Profile{% endblock %}
 
 {% block content %}
-<h2>My Profile</h2>
+<div class="page-header">
+  <p class="eyebrow mb-2">Manager Details</p>
+  <h2 class="fw-bold mb-1">My Profile</h2>
+  <p class="text-muted mb-0">Review your manager information and keep your contact details current.</p>
+</div>
 
-<div class="card mb-4">
-  <div class="card-body">
-
-    <div class="row">
-      <div class="col-md-4 text-center">
-        <img src="{{ manager.profile_photo or url_for('static', filename='default_user.png') }}"
-             class="img-thumbnail mb-3"
-             style="width: 150px; height: 150px; object-fit: cover;">
-
-        <h5>{{ manager.first_name }} {{ manager.last_name }}</h5>
-        <p class="text-muted">{{ manager.job_title or "Manager" }}</p>
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="summary-card summary-card-accent h-100 profile-identity-card">
+      <span class="summary-label">Manager Snapshot</span>
+      <div class="profile-avatar-frame">
+        {% if profile_photo_url %}
+        <img src="{{ profile_photo_url }}" alt="{{ manager.first_name }} {{ manager.last_name }}" class="profile-avatar-image">
+        {% else %}
+        <div class="profile-avatar-fallback">{{ profile_initials }}</div>
+        {% endif %}
       </div>
+      <h3 class="mb-2">{{ manager.first_name }} {{ manager.last_name }}</h3>
+      <p class="mb-2">{{ manager.job_title or "Manager" }}</p>
+      <p class="mb-0">{{ manager.work_email }}</p>
+    </div>
+  </div>
 
-      <div class="col-md-8">
-        <table class="table">
-          <tr>
-            <th>Employee Code</th>
-            <td>{{ manager.emp_code }}</td>
-          </tr>
-          <tr>
-            <th>Email</th>
-            <td>{{ manager.work_email }}</td>
-          </tr>
-          <tr>
-            <th>Phone</th>
-            <td>{{ manager.phone or '-' }}</td>
-          </tr>
-          <tr>
-            <th>Address</th>
-            <td>{{ manager.address or '-' }}</td>
-          </tr>
-        </table>
+  <div class="col-lg-8">
+    <div class="card border-0">
+      <div class="card-body p-4">
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label">Employee Code</label>
+            <input class="form-control" value="{{ manager.emp_code }}" disabled>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input class="form-control" value="{{ manager.work_email }}" disabled>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('manager.profile_edit') }}" enctype="multipart/form-data">
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="profile-photo-upload">
+                <div>
+                  <h6 class="mb-1">Profile Photo</h6>
+                  <p class="text-muted mb-0">Upload a photo so your team sees a proper identity card instead of a placeholder panel.</p>
+                </div>
+                <div class="profile-upload-action">
+                  <input class="profile-file-input" id="managerProfilePhoto" type="file" name="profile_photo" accept=".png,.jpg,.jpeg,.webp">
+                  <label class="btn btn-outline-primary profile-upload-trigger" for="managerProfilePhoto">Choose Photo</label>
+                  <span class="profile-upload-name" data-upload-name>No file chosen</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Display Name</label>
+              <input type="text" class="form-control" name="display_name" value="{{ manager.user.display_name }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-control" name="phone" value="{{ manager.phone }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Address</label>
+              <input type="text" class="form-control" name="address" value="{{ manager.address }}">
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-primary">Save Changes</button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
-
   </div>
 </div>
 
-<div class="card">
-  <div class="card-body">
-    <h4>Edit Profile</h4>
-
-    <form method="post" action="{{ url_for('manager.profile_edit') }}">
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label class="form-label">Display Name</label>
-          <input type="text" class="form-control" name="display_name"
-                 value="{{ manager.user.display_name }}">
-        </div>
-
-        <div class="col-md-4 mb-3">
-          <label class="form-label">Phone</label>
-          <input type="text" class="form-control" name="phone"
-                 value="{{ manager.phone }}">
-        </div>
-
-        <div class="col-md-4 mb-3">
-          <label class="form-label">Address</label>
-          <input type="text" class="form-control" name="address"
-                 value="{{ manager.address }}">
-        </div>
-      </div>
-
-      <button class="btn btn-primary">Save Changes</button>
-    </form>
-  </div>
-</div>
-
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".profile-file-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const fileNameNode = input.closest(".profile-upload-action")?.querySelector("[data-upload-name]");
+      if (!fileNameNode) return;
+      fileNameNode.textContent = input.files && input.files.length ? input.files[0].name : "No file chosen";
+    });
+  });
+});
+</script>
 {% endblock %}

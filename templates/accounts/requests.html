@@ -1,0 +1,57 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Accounts Operations</p>
+            <h2 class="fw-bold mb-1">Accounts Requests</h2>
+            <p class="text-muted mb-0">Create office expense and cash requests, then track each item through approval and closure.</p>
+        </div>
+        <a href="{{ url_for('account_requests.new_request') }}" class="btn btn-primary">New Request</a>
+    </div>
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Draft</span><strong>{{ summary.draft }}</strong></div>
+        <div class="hero-metric"><span>Pending Approval</span><strong>{{ summary.pending_approval }}</strong></div>
+        <div class="hero-metric"><span>Approved</span><strong>{{ summary.approved }}</strong></div>
+        <div class="hero-metric"><span>Awaiting Closure</span><strong>{{ summary.awaiting_closure }}</strong></div>
+        <div class="hero-metric"><span>Closed</span><strong>{{ summary.closed }}</strong></div>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Request</th>
+                    <th>Type</th>
+                    <th>Title</th>
+                    <th>Requested</th>
+                    <th>Approved</th>
+                    <th>Actual</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th width="150">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in requests_list %}
+                <tr>
+                    <td>{{ item.request_no }}</td>
+                    <td>{{ item.request_type.name if item.request_type else "-" }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ "%.2f"|format(item.requested_amount or 0) }}</td>
+                    <td>{{ "%.2f"|format(item.approved_amount or 0) }}</td>
+                    <td>{{ "%.2f"|format(item.actual_amount or 0) }}</td>
+                    <td><span class="badge bg-light text-dark">{{ item.status.replace("_", " ").title() }}</span></td>
+                    <td>{{ item.created_at.strftime("%d %b %Y") if item.created_at else "-" }}</td>
+                    <td><a href="{{ url_for('account_requests.view_request', request_id=item.id) }}" class="btn btn-sm btn-primary">Open</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center text-muted py-4">No accounts requests yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

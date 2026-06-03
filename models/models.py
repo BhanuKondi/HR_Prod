@@ -11,6 +11,19 @@ class Role(db.Model):
     name = db.Column(VARCHAR(100), unique=True, nullable=False)
 
 
+class Company(db.Model):
+    __tablename__ = "companies"
+
+    id = db.Column(INTEGER, primary_key=True)
+    code = db.Column(VARCHAR(50), unique=True, nullable=False)
+    display_name = db.Column(VARCHAR(150), nullable=False)
+    legal_name = db.Column(VARCHAR(255), nullable=False)
+    gst_number = db.Column(VARCHAR(50), nullable=False)
+    address = db.Column(TEXT, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+
 # ------------------- Users -------------------
 class User(db.Model):
     __tablename__ = "users"
@@ -18,6 +31,7 @@ class User(db.Model):
     email = db.Column(VARCHAR(255), unique=True, nullable=False)
     password_hash = db.Column(VARCHAR(255), nullable=False)
     display_name = db.Column(VARCHAR(255))
+    profile_photo_path = db.Column(VARCHAR(255), nullable=True)
 
     role_id = db.Column(INTEGER, db.ForeignKey("roles.id"), nullable=False)
     role = db.relationship("Role")
@@ -199,4 +213,351 @@ class PayrollDetails(db.Model):
     __table_args__ = (
         db.UniqueConstraint('employee_id', 'month', 'year', name='uq_emp_month_year'),
     )
+
+
+class SalaryRevisionConfig(db.Model):
+    __tablename__ = "salary_revision_config"
+
+    id = db.Column(db.Integer, primary_key=True)
+    fixed_approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    fixed_approver = db.relationship("User", foreign_keys=[fixed_approver_user_id])
+
+
+class SalaryRevisionRequest(db.Model):
+    __tablename__ = "salary_revision_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    revision_no = db.Column(db.String(30), unique=True, nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey("employees.id"), nullable=False)
+    requested_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    effective_from = db.Column(db.Date, nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(30), nullable=False, default="draft")
+    current_salary_json = db.Column(db.JSON, nullable=False)
+    proposed_salary_json = db.Column(db.JSON, nullable=False)
+    approver_comments = db.Column(db.Text, nullable=True)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    rejected_at = db.Column(db.DateTime, nullable=True)
+    applied_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    employee = db.relationship("Employee", foreign_keys=[employee_id])
+    requested_by = db.relationship("User", foreign_keys=[requested_by_user_id])
+    approver = db.relationship("User", foreign_keys=[approver_user_id])
+
+
+class SalaryRevisionAction(db.Model):
+    __tablename__ = "salary_revision_actions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    salary_revision_request_id = db.Column(db.Integer, db.ForeignKey("salary_revision_requests.id"), nullable=False)
+    action_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    action_type = db.Column(db.String(30), nullable=False)
+    from_status = db.Column(db.String(30), nullable=True)
+    to_status = db.Column(db.String(30), nullable=False)
+    comments = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    revision = db.relationship(
+        "SalaryRevisionRequest",
+        foreign_keys=[salary_revision_request_id],
+        backref=db.backref("actions", cascade="all, delete-orphan", lazy=True),
+    )
+    action_by = db.relationship("User", foreign_keys=[action_by_user_id])
+
+
+class ReimbursementType(db.Model):
+    __tablename__ = "reimbursement_types"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+
+class ReimbursementConfig(db.Model):
+    __tablename__ = "reimbursement_config"
+
+    id = db.Column(db.Integer, primary_key=True)
+    approver_mode = db.Column(db.String(30), nullable=False, default="reporting_manager")
+    fixed_approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    allow_partial_approval = db.Column(db.Boolean, default=True, nullable=False)
+    allow_multiple_attachments = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    fixed_approver = db.relationship("User", foreign_keys=[fixed_approver_user_id])
+
+
+class ReimbursementRequest(db.Model):
+    __tablename__ = "reimbursement_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_no = db.Column(db.String(30), unique=True, nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey("employees.id"), nullable=False)
+    reimbursement_type_id = db.Column(db.Integer, db.ForeignKey("reimbursement_types.id"), nullable=False)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True)
+    bill_date = db.Column(db.Date, nullable=False)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    description = db.Column(db.Text, nullable=False)
+    requested_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    manager_approved_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    finance_approved_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    final_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    status = db.Column(db.String(40), nullable=False, default="draft")
+    manager_approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    finance_approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    current_assignee_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    manager_comments = db.Column(db.Text, nullable=True)
+    finance_comments = db.Column(db.Text, nullable=True)
+    payment_reference = db.Column(db.String(100), nullable=True)
+    payment_date = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    employee = db.relationship("Employee", foreign_keys=[employee_id], backref="reimbursement_requests")
+    reimbursement_type = db.relationship("ReimbursementType", foreign_keys=[reimbursement_type_id])
+    company = db.relationship("Company", foreign_keys=[company_id])
+    manager_approver = db.relationship("User", foreign_keys=[manager_approver_user_id])
+    finance_approver = db.relationship("User", foreign_keys=[finance_approver_user_id])
+    current_assignee = db.relationship("User", foreign_keys=[current_assignee_user_id])
+
+
+class ReimbursementAttachment(db.Model):
+    __tablename__ = "reimbursement_attachments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    reimbursement_request_id = db.Column(db.Integer, db.ForeignKey("reimbursement_requests.id"), nullable=False)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(100), nullable=True)
+    uploaded_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    reimbursement_request = db.relationship(
+        "ReimbursementRequest",
+        foreign_keys=[reimbursement_request_id],
+        backref=db.backref("attachments", cascade="all, delete-orphan", lazy=True),
+    )
+
+
+class ReimbursementAction(db.Model):
+    __tablename__ = "reimbursement_actions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    reimbursement_request_id = db.Column(db.Integer, db.ForeignKey("reimbursement_requests.id"), nullable=False)
+    action_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    action_type = db.Column(db.String(40), nullable=False)
+    from_status = db.Column(db.String(40), nullable=True)
+    to_status = db.Column(db.String(40), nullable=False)
+    comments = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    reimbursement_request = db.relationship(
+        "ReimbursementRequest",
+        foreign_keys=[reimbursement_request_id],
+        backref=db.backref("actions", cascade="all, delete-orphan", lazy=True),
+    )
+    action_by = db.relationship("User", foreign_keys=[action_by_user_id])
+
+
+class AccountsRequestType(db.Model):
+    __tablename__ = "accounts_request_types"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+
+class AccountsRequestConfig(db.Model):
+    __tablename__ = "accounts_request_config"
+
+    id = db.Column(db.Integer, primary_key=True)
+    default_approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    allow_partial_approval = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    default_approver = db.relationship("User", foreign_keys=[default_approver_user_id])
+
+
+class AccountsRequest(db.Model):
+    __tablename__ = "accounts_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_no = db.Column(db.String(30), unique=True, nullable=False)
+    request_type_id = db.Column(db.Integer, db.ForeignKey("accounts_request_types.id"), nullable=False)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    title = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    requested_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    approved_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    actual_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    payment_mode = db.Column(db.String(30), nullable=True)
+    vendor_name = db.Column(db.String(150), nullable=True)
+    payment_reference = db.Column(db.String(100), nullable=True)
+    payment_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(40), nullable=False, default="draft")
+    approval_comments = db.Column(db.Text, nullable=True)
+    execution_comments = db.Column(db.Text, nullable=True)
+    closure_comments = db.Column(db.Text, nullable=True)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    expense_recorded_at = db.Column(db.DateTime, nullable=True)
+    closed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    request_type = db.relationship("AccountsRequestType", foreign_keys=[request_type_id])
+    company = db.relationship("Company", foreign_keys=[company_id])
+    created_by = db.relationship("User", foreign_keys=[created_by_user_id])
+    approver = db.relationship("User", foreign_keys=[approver_user_id])
+
+
+class AccountsRequestAttachment(db.Model):
+    __tablename__ = "accounts_request_attachments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    accounts_request_id = db.Column(db.Integer, db.ForeignKey("accounts_requests.id"), nullable=False)
+    attachment_stage = db.Column(db.String(30), nullable=False)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(100), nullable=True)
+    uploaded_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    accounts_request = db.relationship(
+        "AccountsRequest",
+        foreign_keys=[accounts_request_id],
+        backref=db.backref("attachments", cascade="all, delete-orphan", lazy=True),
+    )
+
+
+class AccountsRequestAction(db.Model):
+    __tablename__ = "accounts_request_actions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    accounts_request_id = db.Column(db.Integer, db.ForeignKey("accounts_requests.id"), nullable=False)
+    action_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    action_type = db.Column(db.String(40), nullable=False)
+    from_status = db.Column(db.String(40), nullable=True)
+    to_status = db.Column(db.String(40), nullable=False)
+    comments = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    accounts_request = db.relationship(
+        "AccountsRequest",
+        foreign_keys=[accounts_request_id],
+        backref=db.backref("actions", cascade="all, delete-orphan", lazy=True),
+    )
+    action_by = db.relationship("User", foreign_keys=[action_by_user_id])
+
+
+class EmployeeLoanConfig(db.Model):
+    __tablename__ = "employee_loan_config"
+
+    id = db.Column(db.Integer, primary_key=True)
+    fixed_approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    fixed_approver = db.relationship("User", foreign_keys=[fixed_approver_user_id])
+
+
+class EmployeeLoan(db.Model):
+    __tablename__ = "employee_loans"
+
+    id = db.Column(db.Integer, primary_key=True)
+    loan_no = db.Column(db.String(30), unique=True, nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey("employees.id"), nullable=False)
+    requested_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    approved_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    total_installments = db.Column(db.Integer, nullable=False)
+    monthly_installment = db.Column(db.Numeric(12, 2), nullable=True)
+    reason = db.Column(db.Text, nullable=False)
+    repayment_notes = db.Column(db.Text, nullable=True)
+    preferred_disbursement_date = db.Column(db.Date, nullable=True)
+    repayment_start_month = db.Column(db.Integer, nullable=True)
+    repayment_start_year = db.Column(db.Integer, nullable=True)
+    status = db.Column(db.String(40), nullable=False, default="draft")
+    approver_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    account_admin_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    current_assignee_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    approval_comments = db.Column(db.Text, nullable=True)
+    finance_comments = db.Column(db.Text, nullable=True)
+    payment_reference = db.Column(db.String(100), nullable=True)
+    payment_date = db.Column(db.Date, nullable=True)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    paid_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    employee = db.relationship("Employee", foreign_keys=[employee_id], backref="loan_requests")
+    approver = db.relationship("User", foreign_keys=[approver_user_id])
+    account_admin = db.relationship("User", foreign_keys=[account_admin_user_id])
+    current_assignee = db.relationship("User", foreign_keys=[current_assignee_user_id])
+
+
+class EmployeeLoanAction(db.Model):
+    __tablename__ = "employee_loan_actions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    employee_loan_id = db.Column(db.Integer, db.ForeignKey("employee_loans.id"), nullable=False)
+    action_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    action_type = db.Column(db.String(40), nullable=False)
+    from_status = db.Column(db.String(40), nullable=True)
+    to_status = db.Column(db.String(40), nullable=False)
+    comments = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    employee_loan = db.relationship(
+        "EmployeeLoan",
+        foreign_keys=[employee_loan_id],
+        backref=db.backref("actions", cascade="all, delete-orphan", lazy=True),
+    )
+    action_by = db.relationship("User", foreign_keys=[action_by_user_id])
+
+
+class EmployeeLoanRepayment(db.Model):
+    __tablename__ = "employee_loan_repayments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    employee_loan_id = db.Column(db.Integer, db.ForeignKey("employee_loans.id"), nullable=False)
+    payroll_month = db.Column(db.Integer, nullable=False)
+    payroll_year = db.Column(db.Integer, nullable=False)
+    installment_number = db.Column(db.Integer, nullable=False)
+    deducted_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    employee_loan = db.relationship(
+        "EmployeeLoan",
+        foreign_keys=[employee_loan_id],
+        backref=db.backref("repayments", cascade="all, delete-orphan", lazy=True),
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint("employee_loan_id", "payroll_month", "payroll_year", name="uq_employee_loan_payroll_month"),
+    )
+
+
+class EmailDeliveryConfig(db.Model):
+    __tablename__ = "email_delivery_config"
+
+    id = db.Column(db.Integer, primary_key=True)
+    delivery_mode = db.Column(db.String(30), nullable=False, default="intended_recipients")
+    test_address = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
 from models.attendance import Attendance

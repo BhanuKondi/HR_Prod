@@ -1,0 +1,77 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Expense Claims</p>
+            <h2 class="fw-bold mb-1">My Reimbursements</h2>
+            <p class="text-muted mb-0">Track submitted claims, pending approvals, and paid reimbursements from one place.</p>
+        </div>
+        <a href="{{ url_for('employee_reimbursements.new_reimbursement') }}" class="btn btn-primary">New Reimbursement</a>
+    </div>
+
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Drafts</span><strong>{{ summary.draft }}</strong></div>
+        <div class="hero-metric"><span>Pending</span><strong>{{ summary.pending }}</strong></div>
+        <div class="hero-metric"><span>Approved</span><strong>{{ summary.approved }}</strong></div>
+        <div class="hero-metric"><span>Paid</span><strong>{{ summary.paid }}</strong></div>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="data-toolbar">
+        <div>
+            <h5 class="mb-1">Request History</h5>
+            <p class="text-muted mb-0">Each request keeps its own attachment set and approval trail.</p>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Request</th>
+                    <th>Type</th>
+                    <th>Bill Date</th>
+                    <th>Requested</th>
+                    <th>Status</th>
+                    <th>Approver</th>
+                    <th width="160">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reimbursement in reimbursements %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold">{{ reimbursement.request_no }}</div>
+                        <div class="small text-muted">{{ reimbursement.created_at.strftime("%d %b %Y") if reimbursement.created_at else "" }}</div>
+                    </td>
+                    <td>{{ reimbursement.reimbursement_type.name if reimbursement.reimbursement_type else "-" }}</td>
+                    <td>{{ reimbursement.bill_date.strftime("%d %b %Y") if reimbursement.bill_date else "-" }}</td>
+                    <td>{{ "%.2f"|format(reimbursement.requested_amount or 0) }}</td>
+                    <td>
+                        <span class="badge bg-light text-dark">{{ reimbursement.status.replace("_", " ").title() }}</span>
+                        <div class="small text-muted mt-1">
+                            {% if reimbursement.status == 'pending_manager' %}
+                                Approver: {{ reimbursement.manager_approver.display_name or reimbursement.manager_approver.email if reimbursement.manager_approver else 'Not assigned' }}
+                            {% elif reimbursement.status == 'pending_finance' %}
+                                In finance review
+                            {% elif reimbursement.status == 'approved_for_payment' %}
+                                Ready for payout
+                            {% elif reimbursement.status == 'paid' %}
+                                Payment completed
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>{{ reimbursement.manager_approver.display_name or reimbursement.manager_approver.email if reimbursement.manager_approver else "Pending config" }}</td>
+                    <td><a href="{{ url_for('employee_reimbursements.view_reimbursement', request_id=reimbursement.id) }}" class="btn btn-sm btn-primary">Open</a></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No reimbursement requests yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

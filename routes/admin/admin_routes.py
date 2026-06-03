@@ -1,15 +1,26 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify
 from models.models import (
     Employee,
+    EmailDeliveryConfig,
     User,
     Role,
     LeaveApprovalConfig,
     EmployeeSalary,
-    EmployeeAccount
+    EmployeeAccount,
+    Leavee,
+    ReimbursementRequest,
+    AccountsRequest,
+    EmployeeLoan,
 )
 from models.db import db
-from sqlalchemy import cast, Integer
+from sqlalchemy import cast, Integer, func
 from datetime import datetime   # ✅ REQUIRED
+from models.attendance import Attendance
+from utils.authz import ROLE_ACCOUNT_ADMIN, ROLE_ADMIN, ROLE_USER, get_role_id, has_manager_access, normalize_role_name, require_roles
+from utils.email_config_service import DELIVERY_INTENDED, DELIVERY_TEST, get_email_delivery_config
+from utils.reimbursement_service import STATUS_PENDING_MANAGER, STATUS_PENDING_FINANCE
+from utils.accounts_request_service import STATUS_PENDING_APPROVAL as AR_STATUS_PENDING_APPROVAL
+from utils.loan_service import STATUS_PENDING_APPROVAL as LOAN_STATUS_PENDING_APPROVAL
  
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
  
@@ -18,10 +29,7 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 # =====================================================
 @admin_bp.before_request
 def check_admin():
-    if "user_id" not in session:
-        return redirect(url_for("auth.login"))
-    if session.get("role_id") != 1:
-        return "Access denied", 403
+    return require_roles(ROLE_ADMIN)
  
  
 # =====================================================
@@ -29,7 +37,44 @@ def check_admin():
 # =====================================================
 @admin_bp.route("/dashboard")
 def dashboard():
-    return render_template("admin/dashboard.html")
+    total_employees = Employee.query.count()
+    active_employees = Employee.query.filter_by(status="Active").count()
+    manager_count = (
+        db.session.query(Employee.manager_emp_id)
+        .filter(Employee.manager_emp_id.isnot(None))
+        .distinct()
+        .count()
+    )
+    pending_leaves = Leavee.query.filter(Leavee.status.in_(["PENDING_L1", "PENDING_L2"])).count()
+    open_attendance_sessions = Attendance.query.filter_by(clock_out=None).count()
+    pending_reimbursement_queue = ReimbursementRequest.query.filter(
+        ReimbursementRequest.status.in_([STATUS_PENDING_MANAGER, STATUS_PENDING_FINANCE])
+    ).count()
+    pending_accounts_request_queue = AccountsRequest.query.filter_by(
+        status=AR_STATUS_PENDING_APPROVAL
+    ).count()
+    pending_loan_queue = EmployeeLoan.query.filter_by(
+        status=LOAN_STATUS_PENDING_APPROVAL
+    ).count()
+
+    summary = {
+        "total_employees": total_employees,
+        "active_employees": active_employees,
+        "manager_count": manager_count,
+        "pending_leaves": pending_leaves,
+        "open_attendance_sessions": open_attendance_sessions,
+        "pending_reimbursement_queue": pending_reimbursement_queue,
+        "pending_accounts_request_queue": pending_accounts_request_queue,
+        "pending_loan_queue": pending_loan_queue,
+        "total_pending_action_items": (
+            pending_leaves
+            + pending_reimbursement_queue
+            + pending_accounts_request_queue
+            + pending_loan_queue
+        ),
+    }
+
+    return render_template("admin/dashboard.html", summary=summary)
  
  
 # =====================================================
@@ -38,7 +83,32 @@ def dashboard():
 @admin_bp.route("/employees")
 def employees():
     employees = Employee.query.order_by(cast(Employee.emp_code, Integer)).all()
-    return render_template("admin/employees.html", employees=employees)
+    roles = (
+        Role.query
+        .filter(func.lower(Role.name).in_(["admin", "user", "account admin", "account_admin"]))
+        .order_by(Role.name.asc())
+        .all()
+    )
+    managers = (
+        Employee.query
+        .filter(Employee.status == "Active")
+        .order_by(Employee.first_name.asc(), Employee.last_name.asc())
+        .all()
+    )
+
+    summary = {
+        "total_employees": len(employees),
+        "active_employees": sum(1 for employee in employees if employee.status == "Active"),
+        "managers": len(managers),
+    }
+
+    return render_template(
+        "admin/employees.html",
+        employees=employees,
+        managers=managers,
+        roles=roles,
+        summary=summary,
+    )
  
  
 # =====================================================
@@ -121,6 +191,7 @@ def view_employee(id):
     emp = Employee.query.get_or_404(id)
     salary = EmployeeSalary.query.filter_by(employee_id=id).first()
     account = EmployeeAccount.query.filter_by(employee_id=id).first()
+    normalized_role = normalize_role_name(emp.user.role.name if emp.user and emp.user.role else None)
  
     return jsonify({
         "emp_code": emp.emp_code,
@@ -132,8 +203,8 @@ def view_employee(id):
         "job_title": emp.job_title,
         "date_of_joining": str(emp.date_of_joining),
         "status": emp.status,  # ✅ FIXED
-        "role_id": emp.user.role_id if emp.user else None,
-        "role_name": emp.user.role.name if emp.user and emp.user.role else "",
+        "role_id": get_role_id(normalized_role) if emp.user else None,
+        "role_name": normalized_role.replace("_", " ").title() if normalized_role else "",
         "manager_id": emp.manager_emp_id,
         "manager_name": f"{emp.manager.first_name} {emp.manager.last_name}" if emp.manager else "-",
  
@@ -179,13 +250,13 @@ def edit_employee(id):
  
     user = emp.user
     if user:
-        user.status = new_status
+        user.email = emp.work_email
+        user.display_name = f"{emp.first_name} {emp.last_name}".strip()
+        user.role_id = int(request.form.get("role_id")) if request.form.get("role_id") else user.role_id
         if new_status == "Active":
             user.is_active = True
-            user.status_date = None
         else:
             user.is_active = False
-            user.status_date = datetime.utcnow().date()
  
     # ---------- SALARY ----------
     salary = EmployeeSalary.query.filter_by(employee_id=id).first()
@@ -216,6 +287,104 @@ def edit_employee(id):
     db.session.commit()
     flash("Employee updated successfully", "success")
     return redirect(url_for("admin.employees"))
+
+
+# =====================================================
+# USER ACCESS MANAGEMENT
+# =====================================================
+@admin_bp.route("/user-access")
+def user_access():
+    users = (
+        User.query
+        .outerjoin(Employee, Employee.user_id == User.id)
+        .order_by(User.created_at.desc(), User.id.desc())
+        .all()
+    )
+    roles = (
+        Role.query
+        .filter(func.lower(Role.name).in_(["admin", "user", "account admin", "account_admin"]))
+        .order_by(Role.name.asc())
+        .all()
+    )
+    admin_role_id = get_role_id(ROLE_ADMIN)
+    user_role_id = get_role_id(ROLE_USER)
+    account_admin_role_id = get_role_id(ROLE_ACCOUNT_ADMIN)
+
+    summary = {
+        "total_accounts": len(users),
+        "active_accounts": sum(1 for user in users if user.is_active),
+        "must_reset_password": sum(1 for user in users if user.must_change_password),
+        "linked_employees": sum(1 for user in users if user.employee),
+        "manager_access": sum(1 for user in users if has_manager_access(user=user, employee=user.employee)),
+        "finance_accounts": sum(
+            1 for user in users
+            if normalize_role_name(user.role.name if user.role else None) == ROLE_ACCOUNT_ADMIN
+        ),
+    }
+
+    return render_template(
+        "admin/user_access.html",
+        users=users,
+        roles=roles,
+        summary=summary,
+        admin_role_id=admin_role_id,
+        user_role_id=user_role_id,
+        account_admin_role_id=account_admin_role_id,
+    )
+
+
+@admin_bp.route("/user-access/<int:user_id>/update", methods=["POST"])
+def update_user_access(user_id):
+    user = User.query.get_or_404(user_id)
+
+    role_id = request.form.get("role_id")
+    is_active = request.form.get("is_active") == "true"
+    must_change_password = request.form.get("must_change_password") == "true"
+    reset_password = request.form.get("reset_password") == "true"
+
+    if role_id:
+        user.role_id = int(role_id)
+
+    user.is_active = is_active
+    user.must_change_password = must_change_password
+
+    if user.employee:
+        user.employee.status = "Active" if is_active else "Inactive"
+
+    if reset_password:
+        temp_password = request.form.get("temp_password") or "Temp@123"
+        user.set_password(temp_password)
+        user.must_change_password = True
+
+    db.session.commit()
+    flash("User access updated successfully.", "success")
+    return redirect(url_for("admin.user_access"))
+
+
+@admin_bp.route("/email-configuration", methods=["GET", "POST"])
+def email_configuration():
+    config = get_email_delivery_config()
+
+    if request.method == "POST":
+        delivery_mode = request.form.get("delivery_mode", DELIVERY_INTENDED)
+        test_address = (request.form.get("test_address") or "").strip() or None
+
+        if delivery_mode == DELIVERY_TEST and not test_address:
+            flash("Test address is required when test routing is selected.", "danger")
+            return redirect(url_for("admin.email_configuration"))
+
+        config.delivery_mode = delivery_mode
+        config.test_address = test_address
+        db.session.commit()
+        flash("Email configuration updated successfully.", "success")
+        return redirect(url_for("admin.email_configuration"))
+
+    return render_template(
+        "admin/email_configuration.html",
+        config=config,
+        delivery_intended=DELIVERY_INTENDED,
+        delivery_test=DELIVERY_TEST,
+    )
  
  
 # =====================================================

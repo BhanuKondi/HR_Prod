@@ -1,27 +1,36 @@
-from flask import Blueprint, request, jsonify
+import hmac
+import os
+import secrets
+
+from flask import Blueprint, current_app, jsonify, request
 from models.models import Employee, User
 from models.db import db
 from functools import wraps
+from utils.authz import ROLE_USER, get_role_id
 
 api_emp = Blueprint("api_emp", __name__, url_prefix="/api")
 
-# =============================
-#  SIMPLE BASIC AUTH (HARDCODED)
-# =============================
-
-API_USERNAME = "sailpoint"
-API_PASSWORD = "HrApp@123"
+def get_api_credentials():
+    username = os.getenv("HR_API_USERNAME", current_app.config.get("HR_API_USERNAME"))
+    password = os.getenv("HR_API_PASSWORD", current_app.config.get("HR_API_PASSWORD"))
+    return username, password
 
 
 def basic_auth_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
+        expected_username, expected_password = get_api_credentials()
 
         if not auth:
             return jsonify({"error": "Authentication required"}), 401
 
-        if auth.username != API_USERNAME or auth.password != API_PASSWORD:
+        if not expected_username or not expected_password:
+            return jsonify({"error": "API credentials are not configured"}), 503
+
+        username_ok = hmac.compare_digest(auth.username or "", expected_username)
+        password_ok = hmac.compare_digest(auth.password or "", expected_password)
+        if not username_ok or not password_ok:
             return jsonify({"error": "Invalid credentials"}), 401
 
         return f(*args, **kwargs)
@@ -94,9 +103,7 @@ def api_get_employee(empCode):
 @api_emp.route("/employee", methods=["POST"])
 @basic_auth_required
 def api_create_employee():
-    
-
-    data = request.json
+    data = request.get_json(silent=True) or {}
 
     required_fields = [
         "firstName", "lastName", "email",
@@ -124,40 +131,49 @@ def api_create_employee():
     if User.query.filter_by(email=data["email"]).first():
         return jsonify({"error": "Email already exists"}), 400
 
-    # Create user account
-    user = User(
-        email=data["email"],
-        display_name=f"{data['firstName']} {data['lastName']}",
-        role_id=3,
-        is_active=True
-    )
-    user.set_password("Temp@123")
-    db.session.add(user)
-    db.session.commit()
+    employee_role_id = get_role_id(ROLE_USER)
+    if not employee_role_id:
+        return jsonify({"error": "Employee role is not configured"}), 500
 
-    # Create employee record
-    emp = Employee(
-        emp_code=new_emp_code,
-        first_name=data["firstName"],
-        last_name=data["lastName"],
-        work_email=data["email"],
-        phone=data["phone"],
-        address=data["address"],
-        department=data["department"],
-        job_title=data["jobTitle"],
-        status=data["status"],
-        date_of_joining=data["dateOfJoining"],
-        manager_emp_id=data["managerEmpId"],
-        user_id=user.id
-    )
+    temp_password = os.getenv("HR_API_DEFAULT_TEMP_PASSWORD") or f"Temp@{secrets.token_urlsafe(8)}"
 
-    db.session.add(emp)
-    db.session.commit()
+    try:
+        with db.session.begin():
+            user = User(
+                email=data["email"],
+                display_name=f"{data['firstName']} {data['lastName']}",
+                role_id=employee_role_id,
+                is_active=True,
+                must_change_password=True,
+            )
+            user.set_password(temp_password)
+            db.session.add(user)
+            db.session.flush()
+
+            emp = Employee(
+                emp_code=new_emp_code,
+                first_name=data["firstName"],
+                last_name=data["lastName"],
+                work_email=data["email"],
+                phone=data["phone"],
+                address=data["address"],
+                department=data["department"],
+                job_title=data["jobTitle"],
+                status=data["status"],
+                date_of_joining=data["dateOfJoining"],
+                manager_emp_id=data["managerEmpId"],
+                user_id=user.id
+            )
+            db.session.add(emp)
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to create employee: {exc}"}), 500
 
     return jsonify({
         "message": "Employee created successfully",
         "generatedEmpCode": new_emp_code,
-        "employee": serialize_employee(emp)
+        "employee": serialize_employee(emp),
+        "temporaryPasswordSet": bool(os.getenv("HR_API_DEFAULT_TEMP_PASSWORD")),
     }), 201
 
 # =============================

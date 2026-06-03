@@ -1,0 +1,252 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Access Control</p>
+            <h2 class="fw-bold mb-1">User Accounts</h2>
+            <p class="text-muted mb-0">Review login identities, linked employee profiles, admin or user roles, and derived manager access from one admin workspace.</p>
+        </div>
+        <span class="info-chip"><i class="bi bi-shield-lock"></i> Account governance</span>
+    </div>
+
+    <div class="hero-metrics">
+        <div class="hero-metric">
+            <span>Total Accounts</span>
+            <strong>{{ summary.total_accounts }}</strong>
+        </div>
+        <div class="hero-metric">
+            <span>Active Accounts</span>
+            <strong>{{ summary.active_accounts }}</strong>
+        </div>
+        <div class="hero-metric">
+            <span>Password Reset Pending</span>
+            <strong>{{ summary.must_reset_password }}</strong>
+        </div>
+        <div class="hero-metric">
+            <span>Linked To Employees</span>
+            <strong>{{ summary.linked_employees }}</strong>
+        </div>
+        <div class="hero-metric">
+            <span>Manager Access</span>
+            <strong>{{ summary.manager_access }}</strong>
+        </div>
+        <div class="hero-metric">
+            <span>Finance Access</span>
+            <strong>{{ summary.finance_accounts }}</strong>
+        </div>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="data-toolbar">
+        <div>
+            <h5 class="mb-1">User Directory</h5>
+            <p class="text-muted mb-0">Manager access is automatic when a user has at least one direct report. Stored roles stay focused on admin, user, and account admin.</p>
+        </div>
+        <span class="info-chip"><i class="bi bi-person-lock"></i> {{ users|length }} accounts</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>User</th>
+                    <th>Login</th>
+                    <th>Linked Employee</th>
+                    <th>Role</th>
+                    <th>Manager Access</th>
+                    <th>Status</th>
+                    <th>Password Reset</th>
+                    <th>Last Login</th>
+                    <th width="160">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold">{{ user.display_name or (user.employee.first_name ~ " " ~ user.employee.last_name if user.employee else "Unnamed user") }}</div>
+                        <div class="small text-muted">User ID: {{ user.id }}</div>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        {% if user.employee %}
+                        <div class="fw-semibold">{{ user.employee.first_name }} {{ user.employee.last_name }}</div>
+                        <div class="small text-muted">{{ user.employee.emp_code }}{% if user.employee.department %} • {{ user.employee.department }}{% endif %}</div>
+                        {% else %}
+                        <span class="text-muted">No employee linked</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.role and user.role.name|lower in ['account admin', 'account_admin'] %}
+                            Account Admin
+                        {% elif user.role and user.role.name|lower == 'admin' %}
+                            Admin
+                        {% else %}
+                            User
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge {% if user.employee and user.employee.team_members %}bg-primary{% else %}bg-light text-dark{% endif %}">
+                            {{ "Enabled" if user.employee and user.employee.team_members else "No" }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {% if user.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ "Active" if user.is_active else "Disabled" }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {% if user.must_change_password %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                            {{ "Required" if user.must_change_password else "Complete" }}
+                        </span>
+                    </td>
+                    <td>{{ user.last_login_at.strftime("%d %b %Y, %I:%M %p") if user.last_login_at else "Never" }}</td>
+                    <td>
+                        <button
+                            class="btn btn-sm btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#manageUserModal"
+                            data-user-id="{{ user.id }}"
+                            data-user-name="{{ user.display_name or (user.employee.first_name ~ ' ' ~ user.employee.last_name if user.employee else 'User ' ~ user.id) }}"
+                            data-user-email="{{ user.email }}"
+                            data-user-role="{% if user.role and user.role.name|lower in ['account admin', 'account_admin'] %}{{ account_admin_role_id }}{% elif user.role and user.role.name|lower == 'admin' %}{{ admin_role_id }}{% else %}{{ user_role_id }}{% endif %}"
+                            data-user-active="{{ 'true' if user.is_active else 'false' }}"
+                            data-user-reset="{{ 'true' if user.must_change_password else 'false' }}"
+                            data-user-employee="{{ user.employee.first_name ~ ' ' ~ user.employee.last_name if user.employee else '' }}"
+                            data-user-manager-access="{{ 'Enabled' if user.employee and user.employee.team_members else 'No direct reports yet' }}"
+                            data-user-last-login="{{ user.last_login_at.strftime('%d %b %Y, %I:%M %p') if user.last_login_at else 'Never' }}"
+                        >
+                            Manage
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="manageUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="manageUserForm" method="POST">
+                <div class="modal-header modal-header-brand">
+                    <h5 class="modal-title fw-bold">Manage User Access</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body modal-workspace">
+                    <div class="modal-intro">
+                        <h6 id="manageUserTitle">Update account access</h6>
+                        <p id="manageUserSubtitle">Review role, account status, and password reset settings for this login.</p>
+                    </div>
+
+                    <div class="modal-pane-card">
+                        <div class="modal-pane-head">
+                            <div>
+                                <h6>Account access settings</h6>
+                                <p>Changes here affect how this user signs in and what workspace they can open.</p>
+                            </div>
+                            <span class="modal-badge-note"><i class="bi bi-key"></i> Login controls</span>
+                        </div>
+
+                        <div class="row g-3 readonly-grid">
+                            <div class="col-md-6">
+                                <label class="form-label">Login Email</label>
+                                <input type="text" class="form-control" id="manageUserEmail" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Linked Employee</label>
+                                <input type="text" class="form-control" id="manageUserEmployee" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Role</label>
+                                <select class="form-select" name="role_id" id="manageUserRole">
+                                    {% for role in roles %}
+                                    <option value="{{ role.id }}">{{ role.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Manager Access</label>
+                                <input type="text" class="form-control" id="manageUserManagerAccess" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Login</label>
+                                <input type="text" class="form-control" id="manageUserLastLogin" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Status</label>
+                                <select class="form-select" name="is_active" id="manageUserActive">
+                                    <option value="true">Active</option>
+                                    <option value="false">Disabled</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password Reset On Next Login</label>
+                                <select class="form-select" name="must_change_password" id="manageUserReset">
+                                    <option value="false">No</option>
+                                    <option value="true">Yes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Reset Password Now</label>
+                                <select class="form-select" name="reset_password" id="manageUserResetNow">
+                                    <option value="false">No</option>
+                                    <option value="true">Yes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Temporary Password</label>
+                                <input type="text" class="form-control" name="temp_password" id="manageUserTempPassword" placeholder="Used only when reset is Yes">
+                            </div>
+                        </div>
+
+                        <div class="modal-footer-strip">
+                            <p class="modal-footer-copy">Role and account changes save immediately for the selected user.</p>
+                            <button type="submit" class="btn btn-success">Save Access Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const manageModal = document.getElementById("manageUserModal");
+    if (!manageModal) return;
+
+    manageModal.addEventListener("show.bs.modal", (event) => {
+        const button = event.relatedTarget;
+        if (!button) return;
+
+        const userId = button.getAttribute("data-user-id");
+        const userName = button.getAttribute("data-user-name");
+        const userEmail = button.getAttribute("data-user-email");
+        const userRole = button.getAttribute("data-user-role");
+        const userActive = button.getAttribute("data-user-active");
+        const userReset = button.getAttribute("data-user-reset");
+        const userEmployee = button.getAttribute("data-user-employee") || "No employee linked";
+        const userManagerAccess = button.getAttribute("data-user-manager-access");
+        const userLastLogin = button.getAttribute("data-user-last-login");
+
+        document.getElementById("manageUserForm").action = `/admin/user-access/${userId}/update`;
+        document.getElementById("manageUserTitle").innerText = `Manage ${userName}`;
+        document.getElementById("manageUserSubtitle").innerText = "Adjust role, login status, and password reset behavior for this account.";
+        document.getElementById("manageUserEmail").value = userEmail;
+        document.getElementById("manageUserEmployee").value = userEmployee;
+        document.getElementById("manageUserRole").value = userRole;
+        document.getElementById("manageUserManagerAccess").value = userManagerAccess;
+        document.getElementById("manageUserActive").value = userActive;
+        document.getElementById("manageUserReset").value = userReset;
+        document.getElementById("manageUserResetNow").value = "false";
+        document.getElementById("manageUserTempPassword").value = "";
+        document.getElementById("manageUserLastLogin").value = userLastLogin;
+    });
+});
+</script>
+{% endblock %}

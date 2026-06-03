@@ -2,23 +2,34 @@
 {% block title %}Leave Management{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-
-    <h2>Leave Management</h2>
-
-    <!-- TAB BUTTONS -->
-    <div class="d-flex gap-2 flex-wrap mt-3 mb-4">
-        <button class="btn btn-secondary" onclick="showTab('holidays')">Holidays</button>
-        <button class="btn btn-primary" onclick="showTab('request')">Request Leave</button>
-        {% if show_approvals_tab %}
-        <button class="btn btn-info" onclick="showTab('approvals')">Pending Approvals</button>
-        {% endif %}
-        <button class="btn btn-success" onclick="showTab('requests')">Track My Requests</button>
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Leave Workspace</p>
+            <h2 class="fw-bold mb-1">Leave Management</h2>
+            <p class="text-muted mb-0">Track holidays, submit requests and monitor approvals from one organized view.</p>
+        </div>
+        <span class="info-chip"><i class="bi bi-person-badge"></i> {{ employee.emp_code }}</span>
     </div>
 
-    <!-- HOLIDAYS -->
-    <div id="holidays" class="tab-content" style="display:none;">
-        <h3>Company Holidays</h3>
+    <div class="segmented-nav mt-3">
+        <button class="btn btn-outline-primary active" data-tab-button="holidays" onclick="showTab('holidays', this)">Holidays</button>
+        <button class="btn btn-outline-primary" data-tab-button="request" onclick="showTab('request', this)">Request Leave</button>
+        {% if show_approvals_tab %}
+        <button class="btn btn-outline-primary" data-tab-button="approvals" onclick="showTab('approvals', this)">Pending Approvals</button>
+        {% endif %}
+        <button class="btn btn-outline-primary" data-tab-button="requests" onclick="showTab('requests', this)">Track My Requests</button>
+    </div>
+ </div>
+
+<div id="holidays" class="section-card tab-panel">
+    <div class="data-toolbar">
+        <div>
+            <h5 class="mb-1">Company Holidays</h5>
+            <p class="text-muted mb-0">Plan around upcoming company-wide holidays.</p>
+        </div>
+    </div>
+    <div class="table-responsive">
         <table class="table table-striped mt-3">
             <thead>
                 <tr>
@@ -42,73 +53,109 @@
             </tbody>
         </table>
     </div>
+</div>
 
-    <!-- REQUEST -->
-    <div id="request" class="tab-content" style="display:none;">
-        <h3>Request Leave</h3>
-
-        <div class="alert alert-info">
-            <strong>Available Leaves:</strong><br>
-            CL: <span id="cl-balance">Loading...</span><br>
-            SL: <span id="sl-balance">Loading...</span>
+<div id="request" class="section-card tab-panel" style="display:none;">
+    <div class="data-toolbar">
+        <div>
+            <h5 class="mb-1">Request Leave</h5>
+            <p class="text-muted mb-0">Submit a new leave request with real-time leave balance guidance.</p>
         </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <span class="info-chip">CL: <strong id="cl-balance">Loading...</strong></span>
+            <span class="info-chip">SL: <strong id="sl-balance">Loading...</strong></span>
+        </div>
+    </div>
 
-        <form method="POST" action="{{ url_for('employee_leaves.submit_leave') }}">
+    <form method="POST" action="{{ url_for('employee_leaves.submit_leave') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="is_half_day" id="is_half_day" value="false">
 
-            <input type="hidden" name="is_half_day" id="is_half_day" value="false">
-
-            <div class="mb-3">
-                <label>Employee Code</label>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Employee Code</label>
                 <input type="text" class="form-control" value="{{ employee.emp_code }}" readonly>
             </div>
-
-            <div class="mb-3">
-                <label>Employee Name</label>
-                <input type="text" class="form-control"
-                       value="{{ employee.first_name }} {{employee.last_name}}" readonly>
+            <div class="col-md-6">
+                <label class="form-label">Employee Name</label>
+                <input type="text" class="form-control" value="{{ employee.first_name }} {{employee.last_name}}" readonly>
             </div>
-
-            <div class="mb-3">
-                <label>Leave Type</label>
-                <select class="form-control" id="leave_type" name="leave_type" required onchange="handleLeaveType()">
+            <div class="col-md-6">
+                <label class="form-label">Leave Type</label>
+                <select class="form-select" id="leave_type" name="leave_type" required onchange="handleLeaveType()">
                     <option value="" disabled selected>Select Leave Type</option>
                     <option value="Casual Leave">Casual Leave</option>
                     <option value="Sick Leave">Sick Leave</option>
                     <option value="Leave Without Pay">Leave Without Pay</option>
                 </select>
             </div>
-
-            <!-- HALF DAY DROPDOWN -->
-            <div class="mb-3" id="halfDayContainer" style="display:none;">
-                <label>Leave Duration</label>
-                <select class="form-control" id="halfDaySelect" onchange="toggleHalfDay(this.value)">
-    <option value="false" id="fullDayOption">Full Day</option>
-    <option value="true">Half Day</option>
-</select>
+            <div class="col-md-6" id="halfDayContainer" style="display:none;">
+                <label class="form-label">Leave Duration</label>
+                <select class="form-select" id="halfDaySelect" onchange="toggleHalfDay(this.value)">
+                    <option value="false" id="fullDayOption">Full Day</option>
+                    <option value="true">Half Day</option>
+                </select>
             </div>
-
-            <div class="mb-3">
-                <label>Start Date</label>
+            <div class="col-md-6">
+                <label class="form-label">Start Date</label>
                 <input type="date" class="form-control" name="start_date" required>
             </div>
-
-            <div class="mb-3">
-                <label>End Date</label>
+            <div class="col-md-6">
+                <label class="form-label">End Date</label>
                 <input type="date" class="form-control" name="end_date" required>
             </div>
-
-            <div class="mb-3">
-                <label>Reason</label>
-                <textarea class="form-control" name="reason" required></textarea>
+            <div class="col-12">
+                <label class="form-label">Reason</label>
+                <textarea class="form-control" rows="4" name="reason" required></textarea>
             </div>
+            <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-primary px-4">Submit Request</button>
+            </div>
+        </div>
+    </form>
+</div>
 
-            <button class="btn btn-primary">Submit</button>
-        </form>
+{% if show_approvals_tab %}
+<div id="approvals" class="section-card tab-panel" style="display:none;">
+    <div class="data-toolbar">
+        <div>
+            <h5 class="mb-1">Pending Approvals</h5>
+            <p class="text-muted mb-0">Review leave requests currently waiting for your action.</p>
+        </div>
     </div>
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Emp Code</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Period</th>
+                    <th>Days</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="approvals-body">
+                <tr>
+                    <td colspan="9" class="text-center text-muted">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 
-    <!-- REQUESTS -->
-    <div id="requests" class="tab-content" style="display:none;">
-        <h3>My Requests</h3>
+<div id="requests" class="section-card tab-panel" style="display:none;">
+    <div class="data-toolbar">
+        <div>
+            <h5 class="mb-1">My Requests</h5>
+            <p class="text-muted mb-0">Track submitted requests and approval status changes.</p>
+        </div>
+    </div>
+    <div class="table-responsive">
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -123,29 +170,26 @@
             <tbody id="requests-body"></tbody>
         </table>
     </div>
-
 </div>
 
 <script>
-
 let clBalance = 0;
 let slBalance = 0;
+const csrfToken = "{{ csrf_token }}";
 
-// =========================
-// TAB SWITCH
-// =========================
-function showTab(tabId) {
-    document.querySelectorAll(".tab-content").forEach(sec => sec.style.display = "none");
+function showTab(tabId, button = null) {
+    document.querySelectorAll(".tab-panel").forEach(sec => sec.style.display = "none");
     document.getElementById(tabId).style.display = "block";
+
+    document.querySelectorAll("[data-tab-button]").forEach(btn => btn.classList.remove("active"));
+    const activeButton = button || document.querySelector(`[data-tab-button="${tabId}"]`);
+    activeButton?.classList.add("active");
 
     if (tabId === "requests") loadRequests();
     if (tabId === "approvals") loadApprovals();
     if (tabId === "request") loadLeaveBalance();
 }
 
-// =========================
-// LOAD BALANCE
-// =========================
 function loadLeaveBalance() {
     fetch("{{ url_for('employee_leaves.leave_balance') }}")
     .then(res => res.json())
@@ -158,74 +202,49 @@ function loadLeaveBalance() {
     });
 }
 
-// =========================
-// LEAVE TYPE LOGIC
-// =========================
 function handleLeaveType() {
     let type = document.getElementById("leave_type").value;
     let halfDiv = document.getElementById("halfDayContainer");
     let halfSelect = document.getElementById("halfDaySelect");
 
-    // reset
     document.getElementById("is_half_day").value = "false";
     halfSelect.value = "false";
     halfSelect.disabled = false;
     halfDiv.style.display = "none";
 
-    // ======================
-    // CASUAL LEAVE
-    // ======================
     if (type === "Casual Leave") {
-
-        // ❌ NO LEAVE
         if (clBalance <= 0) {
             alert("No Casual Leave available");
             document.getElementById("leave_type").value = "";
             return;
         }
-
         halfDiv.style.display = "block";
-
-        // ✅ ONLY HALF DAY ALLOWED
         if (clBalance < 1) {
             halfSelect.value = "true";
-            halfSelect.disabled = true;   // 🔥 lock dropdown
+            halfSelect.disabled = true;
             toggleHalfDay("true");
-
             alert("Only Half Day Casual Leave available");
         }
     }
 
-    // ======================
-    // SICK LEAVE
-    // ======================
     if (type === "Sick Leave") {
-
-        // ❌ NO LEAVE
         if (slBalance <= 0) {
             alert("No Sick Leave available");
             document.getElementById("leave_type").value = "";
             return;
         }
-
         halfDiv.style.display = "block";
-
-        // ✅ ONLY HALF DAY
         if (slBalance < 1) {
             halfSelect.value = "true";
             halfSelect.disabled = true;
             toggleHalfDay("true");
-
             alert("Only Half Day Sick Leave available");
         }
     }
 }
-// =========================
-// HALF DAY LOGIC
-// =========================
+
 function toggleHalfDay(value) {
     document.getElementById("is_half_day").value = value;
-
     let start = document.querySelector("input[name='start_date']");
     let end = document.querySelector("input[name='end_date']");
 
@@ -236,14 +255,14 @@ function toggleHalfDay(value) {
         end.readOnly = false;
     }
 }
+
 function loadApprovals() {
     fetch("{{ url_for('employee_leaves.my_approvals') }}")
     .then(res => res.json())
     .then(data => {
         let html = "";
-
         if (data.length === 0) {
-            html = `<tr><td colspan="8" class="text-center text-muted">No pending approvals</td></tr>`;
+            html = `<tr><td colspan="9" class="text-center text-muted">No pending approvals</td></tr>`;
         }
 
         data.forEach((l, i) => {
@@ -265,30 +284,32 @@ function loadApprovals() {
 
         document.getElementById("approvals-body").innerHTML = html;
     })
-    .catch(err => {
-        console.error("Error loading approvals:", err);
-    });
-}
-function approve(id){
-    fetch(`/employee/leaves/leave/approve/${id}`, {method:"POST"})
-    .then(()=>loadApprovals());
+    .catch(err => console.error("Error loading approvals:", err));
 }
 
-function reject(id){
-    fetch(`/employee/leaves/leave/reject/${id}`, {method:"POST"})
-    .then(()=>loadApprovals());
+function approve(id) {
+    fetch(`/employee/leaves/leave/approve/${id}`, {
+        method: "POST",
+        headers: { "X-CSRF-Token": csrfToken }
+    })
+    .then(() => loadApprovals());
 }
 
-// =========================
-// LOAD REQUESTS
-// =========================
-function loadRequests(){
+function reject(id) {
+    fetch(`/employee/leaves/leave/reject/${id}`, {
+        method: "POST",
+        headers: { "X-CSRF-Token": csrfToken }
+    })
+    .then(() => loadApprovals());
+}
+
+function loadRequests() {
     fetch("{{ url_for('employee_leaves.my_requests') }}")
-    .then(res=>res.json())
-    .then(data=>{
-        let html="";
-        data.forEach((l,i)=>{
-            html+=`<tr>
+    .then(res => res.json())
+    .then(data => {
+        let html = "";
+        data.forEach((l, i) => {
+            html += `<tr>
                 <td>${i+1}</td>
                 <td>${l.start} → ${l.end}</td>
                 <td>${l.days}</td>
@@ -297,13 +318,10 @@ function loadRequests(){
                 <td>${l.status}</td>
             </tr>`;
         });
-        document.getElementById("requests-body").innerHTML=html;
+        document.getElementById("requests-body").innerHTML = html;
     });
 }
 
-// =========================
-// AUTO SYNC START->END
-// =========================
 document.querySelector("input[name='start_date']").addEventListener("change", function () {
     let isHalf = document.getElementById("is_half_day").value === "true";
     if (isHalf) {
@@ -311,9 +329,7 @@ document.querySelector("input[name='start_date']").addEventListener("change", fu
     }
 });
 
-// =========================
 window.onload = () => showTab('holidays');
-
 </script>
 
 {% endblock %}

@@ -3,132 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Employee Panel</title>
- 
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
- 
-<!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary px-4">
-   <a class="navbar-brand d-flex align-items-center gap-3" href="#" style="padding:6px 0;">
- 
-  <!-- White Logo Badge -->
-  <div style="
-      width:48px;
-      height:48px;
-      background:#ffffff;
-      border-radius:14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow:0 8px 18px rgba(0,0,0,0.18);
-  ">
-    <img src="{{ url_for('static', filename='images/logo.png') }}"
-         alt="ATIKES Logo"
-         style="
-           width:40px;
-           height:40px;
-           object-fit:contain;
-         ">
-  </div>
- 
-  <!-- Brand Text -->
-  <div style="
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      line-height:1.1;
-  ">
-    <span style="
-        font-size:20px;
-        font-weight:800;
-        color:#ffffff;
-        letter-spacing:1.4px;
-    ">
-      ATIKES
-    </span>
-    <span style="
-        font-size:13px;
-        font-weight:500;
-        color:rgba(255,255,255,0.85);
-        margin-top:2px;
-    ">
-      HR Management
-    </span>
-  </div>
- 
-</a>
-    <div class="ms-auto dropdown">
-        <a class="btn btn-outline-light dropdown-toggle" href="#" role="button"
-           id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            {{ session.email }}
+<div class="app-shell">
+    <nav class="navbar navbar-expand-lg navbar-dark app-topbar">
+        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('employee.dashboard') }}">
+            <div class="brand-badge">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ATIKES Logo">
+            </div>
+            <div class="brand-text">
+                <span class="brand-title">ATIKES</span>
+            </div>
         </a>
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
-            <li><a class="dropdown-item" href="{{ url_for('settings.change_password') }}">Change Password</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
-        </ul>
+        <div class="ms-auto dropdown">
+            <a class="btn account-chip dropdown-toggle" href="#" role="button"
+               id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ session.email }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
+                <li><a class="dropdown-item" href="{{ url_for('settings.change_password') }}">Change Password</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="app-body">
+        <aside class="sidebar">
+            <ul class="nav flex-column">
+                <li class="nav-item"><p class="sidebar-section-title mb-2">HR</p></li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee.dashboard') }}"
+                       class="nav-link sidebar-item {% if '/employee/dashboard' in request.path %}active{% endif %}">
+                        <i class="bi bi-grid me-2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee.profile') }}"
+                       class="nav-link sidebar-item {% if '/employee/profile' in request.path %}active{% endif %}">
+                        <i class="bi bi-person-circle me-2"></i> Profile
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee_attendance_bp.attendance_page') }}"
+                       class="nav-link sidebar-item {% if '/employee/attendance' in request.path %}active{% endif %}">
+                        <i class="bi bi-clock-history me-2"></i> Attendance
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee_leaves.leave_management') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/employee/leaves') %}active{% endif %}">
+                        <i class="bi bi-calendar-check me-2"></i> Leave Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee_payroll.payslip_page') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/employee/payroll') %}active{% endif %}">
+                        <i class="bi bi-file-earmark-pdf me-2"></i> Payslip
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee_reimbursements.list_reimbursements') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/employee/reimbursements') %}active{% endif %}">
+                        <i class="bi bi-receipt-cutoff me-2"></i> Reimbursements
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee_loans.list_loans') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/employee/loans') %}active{% endif %}">
+                        <i class="bi bi-cash-stack me-2"></i> Employee Loans
+                    </a>
+                </li>
+                {% if session.get('role_name') == 'account_admin' %}
+                <li class="nav-item mt-3"><p class="sidebar-section-title mb-2">Accounts</p></li>
+                <li class="nav-item">
+                    <a href="{{ url_for('account_requests.list_requests') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/accounts/requests') %}active{% endif %}">
+                        <i class="bi bi-cash-coin me-2"></i> Accounts Requests
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('account_reimbursements.list_reimbursements') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/accounts/reimbursements') %}active{% endif %}">
+                        <i class="bi bi-wallet2 me-2"></i> Finance Reimbursements
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('account_loans.list_loans') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/accounts/loans') %}active{% endif %}">
+                        <i class="bi bi-cash-stack me-2"></i> Loan Payments
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </aside>
+
+        <main class="app-content">
+            <div class="content-shell">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-stack">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'warning' if category == 'message' else category }}" role="alert">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+                {% block content %}{% endblock %}
+            </div>
+        </main>
     </div>
-</nav>
- 
- 
-<div class="d-flex">
- 
-    <!-- SIDEBAR -->
-    <div class="bg-light sidebar p-3" style="width: 260px; min-height: 100vh;">
-        <ul class="nav flex-column">
- 
-            <li class="nav-item">
-                <a href="{{ url_for('employee.dashboard') }}"
-                   class="nav-link sidebar-item {% if '/employee/dashboard' in request.path %}active{% endif %}">
-                   Dashboard
-                </a>
-            </li>
- 
-            <li class="nav-item">
-                <a href="{{ url_for('employee.profile') }}"
-                   class="nav-link sidebar-item {% if '/employee/profile' in request.path %}active{% endif %}">
-                   Profile
-                </a>
-            </li>
- 
-            <li class="nav-item">
-                <a href="{{ url_for('employee_attendance_bp.attendance_page') }}"
-                   class="nav-link sidebar-item {% if '/employee/attendance' in request.path %}active{% endif %}">
-                   Attendance
-                </a>
-            </li>
- 
-            <li class="nav-item">
-    <a href="{{ url_for('employee_leaves.leave_management') }}"
-       class="nav-link sidebar-item
-       {% if request.path.startswith('/employee/leaves') %}active{% endif %}">
-        Leave Management
-    </a>
-</li>
- 
-     <li class="nav-item">
-    <a href="{{ url_for('employee_payroll.payslip_page') }}"
-       class="nav-link sidebar-item 
-       {% if request.path.startswith('/employee/payroll') %}active{% endif %}">
-        <i class="bi bi-file-earmark-pdf"></i> Download Payslip
-    </a>
-</li>
- 
-        </ul>
-    </div>
- 
-    <!-- MAIN CONTENT → THIS WAS MISSING -->
-    <div class="p-4" style="width: 100%;">
-        {% block content %}{% endblock %}
-    </div>
- 
 </div>
- 
- 
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
- 

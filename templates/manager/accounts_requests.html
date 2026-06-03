@@ -1,0 +1,70 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Accounts Operations</p>
+        <h2 class="fw-bold mb-1">Accounts Approvals</h2>
+        <p class="text-muted mb-0">Review office-expense and cash requests assigned to you for approval.</p>
+    </div>
+    <div class="hero-metrics">
+        <a class="hero-metric {% if status_filter == 'pending' %}active{% endif %}" href="{{ url_for('manager_account_requests.list_requests', status_filter='pending') }}">
+            <span>Pending Approval</span><strong>{{ summary.pending }}</strong>
+        </a>
+        <a class="hero-metric {% if status_filter == 'approved' %}active{% endif %}" href="{{ url_for('manager_account_requests.list_requests', status_filter='approved') }}">
+            <span>Approved</span><strong>{{ summary.approved }}</strong>
+        </a>
+        <a class="hero-metric {% if status_filter == 'rejected' %}active{% endif %}" href="{{ url_for('manager_account_requests.list_requests', status_filter='rejected') }}">
+            <span>Rejected</span><strong>{{ summary.rejected }}</strong>
+        </a>
+        <a class="hero-metric {% if status_filter == 'all' %}active{% endif %}" href="{{ url_for('manager_account_requests.list_requests', status_filter='all') }}">
+            <span>All</span><strong>{{ summary.all }}</strong>
+        </a>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Request</th>
+                    <th>Submitted By</th>
+                    <th>Type</th>
+                    <th>Title</th>
+                    <th>Requested</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th width="150">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in requests_list %}
+                <tr>
+                    <td>{{ item.request_no }}</td>
+                    <td>{{ item.created_by.display_name or item.created_by.email if item.created_by else '-' }}</td>
+                    <td>{{ item.request_type.name if item.request_type else "-" }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ "%.2f"|format(item.requested_amount or 0) }}</td>
+                    <td><span class="badge bg-light text-dark">{{ item.status.replace("_", " ").title() }}</span></td>
+                    <td>{{ item.submitted_at.strftime("%d %b %Y") if item.submitted_at else "-" }}</td>
+                    <td><a href="{{ url_for('manager_account_requests.view_request', request_id=item.id) }}" class="btn btn-sm btn-primary">Review</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-muted py-4">No accounts requests assigned to you.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.hero-metrics .hero-metric {
+    text-decoration: none;
+    cursor: pointer;
+}
+.hero-metrics .hero-metric.active {
+    border: 2px solid var(--brand-primary);
+    box-shadow: 0 10px 24px rgba(13, 110, 253, 0.14);
+}
+</style>
+{% endblock %}

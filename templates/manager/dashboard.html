@@ -2,113 +2,259 @@
 
 {% block content %}
 <div class="container mt-4">
-
-  <!-- CARD -->
-  <div class="card shadow p-4 mb-3">
-    <div class="d-flex justify-content-between align-items-center">
-
-      <!-- BUTTONS -->
+  <div class="page-header mb-4">
+    <p class="eyebrow mb-2">Manager Workspace</p>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
       <div>
-        <button id="clockInBtn" class="btn btn-success btn-lg px-4 me-3">Clock In</button>
-        <button id="clockOutBtn" class="btn btn-danger btn-lg px-4">Clock Out</button>
+        <h2 class="fw-bold mb-1">Welcome, {{ manager.first_name }}</h2>
+        <p class="text-muted mb-0">Manage your attendance and keep an eye on your team.</p>
       </div>
+      <div class="text-end">
+        <div class="small text-muted">Manager Code</div>
+        <div class="fw-semibold">{{ manager.emp_code }}</div>
+        <div class="small text-muted">{{ manager.department or "Department not set" }}</div>
+      </div>
+    </div>
+  </div>
 
-      <!-- TIMER DISPLAY -->
-      <div class="text-center d-flex gap-5 justify-content-center align-items-center">
+  <div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3">
+      <div class="summary-card">
+        <span class="summary-label">Team Size</span>
+        <h3>{{ summary.team_size }}</h3>
+        <p>Employees reporting to you</p>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="summary-card summary-card-accent">
+        <span class="summary-label">Active Team Sessions</span>
+        <h3>{{ summary.active_team_members }}</h3>
+        <p>Reportees currently clocked in</p>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="summary-card">
+        <span class="summary-label">Pending Team Leaves</span>
+        <h3>{{ summary.pending_team_leaves }}</h3>
+        <p>Requests needing team attention</p>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="summary-card">
+        <span class="summary-label">Worked Today</span>
+        <h3 id="summaryWorkedTime">{{ "%02d:%02d:%02d"|format(summary.total_worked_seconds // 3600, (summary.total_worked_seconds % 3600) // 60, summary.total_worked_seconds % 60) }}</h3>
+        <p>Your completed work duration so far</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 p-4 mb-4 dashboard-panel">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-4">
+      <div>
+        <p class="eyebrow mb-2">Attendance Actions</p>
+        <div>
+          <button id="clockInBtn" class="btn btn-success btn-lg px-4 me-3">Clock In</button>
+          <button id="clockOutBtn" class="btn btn-danger btn-lg px-4">Clock Out</button>
+        </div>
+        <div id="statusMessage" class="small mt-3 text-muted"></div>
+      </div>
+      <div class="text-center d-flex gap-5 justify-content-center align-items-center flex-wrap">
         <div>
           <small class="text-muted">Current Session Time</small>
           <h1 id="sessionTime" class="fw-bold text-success">00:00:00</h1>
         </div>
-
         <div>
           <small class="text-muted">Total Worked Today</small>
           <h1 id="totalWorkedTime" class="fw-bold text-primary">00:00:00</h1>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div id="statusMessage" class="mt-2 text-info"></div>
+  <div class="row g-4">
+    <div class="col-xl-7">
+      <div class="card shadow-sm border-0 p-4 dashboard-panel h-100">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+          <div>
+            <h5 class="mb-1">Today's Attendance Log</h5>
+            <p class="text-muted mb-0">Your recorded sessions for the current day.</p>
+          </div>
+          <a class="btn btn-outline-primary btn-sm" href="{{ url_for('manager_attendance_bp.attendance_page') }}">Open attendance</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody id="managerTxnTable">
+              {% if attendance_logs %}
+                {% for log in attendance_logs %}
+                <tr>
+                  <td>{{ log.transaction_no }}</td>
+                  <td>{{ log.clock_in.strftime('%I:%M %p') if log.clock_in else '-' }}</td>
+                  <td>{{ log.clock_out.strftime('%I:%M %p') if log.clock_out else '-' }}</td>
+                  <td>{{ "%02d:%02d:%02d"|format((log.duration_seconds or 0) // 3600, ((log.duration_seconds or 0) % 3600) // 60, (log.duration_seconds or 0) % 60) }}</td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="4" class="text-muted">No attendance activity recorded yet today.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-5">
+      <div class="card shadow-sm border-0 p-4 dashboard-panel h-100">
+        <h5 class="mb-1">Team Snapshot</h5>
+        <p class="text-muted mb-3">A quick view of your reportees.</p>
+        <div class="list-group list-group-flush">
+          {% if team %}
+            {% for member in team[:6] %}
+            <div class="list-group-item px-0 d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-semibold">{{ member.first_name }} {{ member.last_name }}</div>
+                <div class="small text-muted">{{ member.job_title or "Role not set" }}</div>
+              </div>
+              <span class="badge rounded-pill text-bg-light">{{ member.status or "Unknown" }}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-muted">No reportees assigned yet.</div>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  const csrfToken = "{{ csrf_token }}";
+  let workTimerInterval = null;
+  let previousWorkedSeconds = 0;
+  let activeLogId = null;
 
-let workTimerInterval = null;
-let previousWorkedSeconds = 0;
-
-/* ---------------- TIMER FUNCTIONS ---------------- */
-function stopWorkTimer() {
-  clearInterval(workTimerInterval);
-  workTimerInterval = null;
-}
-
-function startWorkTimer(clockInISO) {
-  stopWorkTimer();
-  const start = new Date(clockInISO);
-
-  function tick() {
-    const now = new Date();
-    const diff = Math.floor((now - start) / 1000);
-    const total = diff + previousWorkedSeconds;
-
-    document.getElementById("sessionTime").innerText = formatHHMMSS(diff);
-    document.getElementById("totalWorkedTime").innerText = formatHHMMSS(total);
+  function setStatus(message, type = "muted") {
+    const node = document.getElementById("statusMessage");
+    node.className = `small mt-3 text-${type}`;
+    node.innerText = message;
   }
 
-  tick();
-  workTimerInterval = setInterval(tick, 1000);
-}
+  function stopWorkTimer() {
+    clearInterval(workTimerInterval);
+    workTimerInterval = null;
+  }
 
-function formatHHMMSS(sec) {
-  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
-  const s = String(sec % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
-}
-
-/* ---------------- LOAD SUMMARY ---------------- */
-async function loadTodaySummary() {
-  const res = await fetch("/manager/attendance/today-summary");
-  const data = await res.json();
-  previousWorkedSeconds = data.total_seconds || 0;
-  document.getElementById("totalWorkedTime").innerText = formatHHMMSS(previousWorkedSeconds);
-}
-
-/* ---------------- CURRENT SESSION ---------------- */
-async function loadCurrentSession() {
-  const res = await fetch("/manager/attendance/current");
-  const data = await res.json();
-
-  if (data.active) {
-    startWorkTimer(data.clock_in);
-    document.getElementById("statusMessage").innerText = "You are currently clocked in";
-  } else {
+  function startWorkTimer(clockInISO) {
     stopWorkTimer();
-    document.getElementById("sessionTime").innerText = "00:00:00";
-    document.getElementById("statusMessage").innerText = "You are currently clocked out";
+    const start = new Date(clockInISO);
+
+    function tick() {
+      const now = new Date();
+      const diff = Math.floor((now - start) / 1000);
+      const total = diff + previousWorkedSeconds;
+      document.getElementById("sessionTime").innerText = formatHHMMSS(diff);
+      document.getElementById("totalWorkedTime").innerText = formatHHMMSS(total);
+    }
+
+    tick();
+    workTimerInterval = setInterval(tick, 1000);
   }
-}
 
-/* ---------------- BUTTON ACTIONS ---------------- */
-document.getElementById("clockInBtn").addEventListener("click", async () => {
-  await fetch("/manager/attendance/clock_in", { method: "POST" });
-  await loadTodaySummary();
-  await loadCurrentSession();
-});
+  function formatHHMMSS(sec) {
+    const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+    const s = String(sec % 60).padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  }
 
-document.getElementById("clockOutBtn").addEventListener("click", async () => {
-  stopWorkTimer();
-  await fetch("/attendance/clock_out", { method: "POST" });
-  await loadTodaySummary();
-  await loadCurrentSession();
-});
+  async function loadTodaySummary() {
+    const res = await fetch("/manager/attendance/today-summary");
+    const data = await res.json();
+    previousWorkedSeconds = data.total_seconds || 0;
+    document.getElementById("totalWorkedTime").innerText = formatHHMMSS(previousWorkedSeconds);
+    document.getElementById("summaryWorkedTime").innerText = formatHHMMSS(previousWorkedSeconds);
 
-/* ---------------- INITIAL LOAD ---------------- */
-(async function init() {
-  await loadTodaySummary();
-  await loadCurrentSession();
-})();
+    const tbody = document.getElementById("managerTxnTable");
+    if (!data.transactions || !data.transactions.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No attendance activity recorded yet today.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.transactions.map((tx) => `
+      <tr>
+        <td>${tx.transaction_no}</td>
+        <td>${tx.clock_in}</td>
+        <td>${tx.clock_out}</td>
+        <td>${formatHHMMSS(tx.duration || 0)}</td>
+      </tr>
+    `).join("");
+  }
+
+  async function loadCurrentSession() {
+    const res = await fetch("/manager/attendance/current");
+    const data = await res.json();
+
+    if (data.active) {
+      activeLogId = data.log_id;
+      startWorkTimer(data.clock_in);
+      setStatus("You are currently clocked in.", "success");
+    } else {
+      activeLogId = null;
+      stopWorkTimer();
+      document.getElementById("sessionTime").innerText = "00:00:00";
+      setStatus("You are currently clocked out.");
+    }
+  }
+
+  document.getElementById("clockInBtn").addEventListener("click", async () => {
+    const response = await fetch("/manager/attendance/clock_in", {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken }
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setStatus(data.error || "Clock in failed.", "danger");
+      return;
+    }
+    setStatus(data.message || "Clocked in successfully.", "success");
+    await loadTodaySummary();
+    await loadCurrentSession();
+  });
+
+  document.getElementById("clockOutBtn").addEventListener("click", async () => {
+    if (!activeLogId) {
+      setStatus("No active session found to clock out.", "danger");
+      return;
+    }
+
+    stopWorkTimer();
+    const response = await fetch(`/manager/attendance/clock_out/${activeLogId}`, {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken }
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setStatus(data.error || "Clock out failed.", "danger");
+      return;
+    }
+    setStatus(data.message || "Clocked out successfully.", "primary");
+    await loadTodaySummary();
+    await loadCurrentSession();
+  });
+
+  (async function init() {
+    await loadTodaySummary();
+    await loadCurrentSession();
+  })();
 });
 </script>
 

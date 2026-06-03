@@ -3,89 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Manager Panel</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-
-<!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary px-4">
-    <a class="navbar-brand fw-bold text-white" href="#">ATIKES HR Management</a>
-
-    <div class="ms-auto dropdown">
-        <a class="btn btn-outline-light dropdown-toggle" href="#" role="button"
-           id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            {{ session.email }}
+<div class="app-shell">
+    <nav class="navbar navbar-expand-lg navbar-dark app-topbar">
+        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('manager.dashboard') }}">
+            <div class="brand-badge">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ATIKES Logo">
+            </div>
+            <div class="brand-text">
+                <span class="brand-title">ATIKES</span>
+            </div>
         </a>
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
-            <li><a class="dropdown-item" href="{{ url_for('settings.change_password') }}">Change Password</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
-        </ul>
+
+        <div class="ms-auto dropdown">
+            <a class="btn account-chip dropdown-toggle" href="#" role="button"
+               id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ session.email }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
+                <li><a class="dropdown-item" href="{{ url_for('settings.change_password') }}">Change Password</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="app-body">
+        <aside class="sidebar">
+            <ul class="nav flex-column">
+                <li class="nav-item"><p class="sidebar-section-title mb-2">HR</p></li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager.dashboard') }}"
+                       class="nav-link sidebar-item {% if '/manager/dashboard' in request.path %}active{% endif %}">
+                        <i class="bi bi-grid me-2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager.profile') }}"
+                       class="nav-link sidebar-item {% if '/manager/profile' in request.path %}active{% endif %}">
+                        <i class="bi bi-person-badge me-2"></i> Profile
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager_team_bp.team_page') }}"
+                       class="nav-link sidebar-item {% if '/manager/team' in request.path %}active{% endif %}">
+                        <i class="bi bi-people me-2"></i> My Reportees
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager_attendance_bp.attendance_page') }}"
+                       class="nav-link sidebar-item {% if '/manager/attendance' in request.path %}active{% endif %}">
+                        <i class="bi bi-clock-history me-2"></i> Attendance
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager_leaves.leave_management') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/manager/leaves') %}active{% endif %}">
+                        <i class="bi bi-calendar-check me-2"></i> Leave Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager_payroll.payslip_page') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/manager/payroll') %}active{% endif %}">
+                        <i class="bi bi-file-earmark-pdf me-2"></i> Payslip
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager_reimbursements.list_reimbursements') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/manager/reimbursements') %}active{% endif %}">
+                        <i class="bi bi-receipt-cutoff me-2"></i> Reimbursements
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee_reimbursements.list_reimbursements') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/employee/reimbursements') %}active{% endif %}">
+                        <i class="bi bi-person-vcard me-2"></i> My Reimbursements
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('employee_loans.list_loans') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/employee/loans') %}active{% endif %}">
+                        <i class="bi bi-cash-stack me-2"></i> My Loans
+                    </a>
+                </li>
+                <li class="nav-item mt-3"><p class="sidebar-section-title mb-2">Accounts</p></li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager_loans.list_loans') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/manager/loans') %}active{% endif %}">
+                        <i class="bi bi-journal-check me-2"></i> Loan Approvals
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('manager_account_requests.list_requests') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/manager/accounts/requests') %}active{% endif %}">
+                        <i class="bi bi-cash-coin me-2"></i> Accounts Approvals
+                    </a>
+                </li>
+                {% if session.get('role_name') == 'account_admin' %}
+                <li class="nav-item">
+                    <a href="{{ url_for('account_requests.list_requests') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/accounts/requests') %}active{% endif %}">
+                        <i class="bi bi-briefcase me-2"></i> Accounts Requests
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('account_reimbursements.list_reimbursements') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/accounts/reimbursements') %}active{% endif %}">
+                        <i class="bi bi-wallet2 me-2"></i> Finance Reimbursements
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('account_loans.list_loans') }}"
+                       class="nav-link sidebar-item {% if request.path.startswith('/accounts/loans') %}active{% endif %}">
+                        <i class="bi bi-cash-stack me-2"></i> Loan Payments
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </aside>
+
+        <main class="app-content">
+            <div class="content-shell">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-stack">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'warning' if category == 'message' else category }}" role="alert">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+                {% block content %}{% endblock %}
+            </div>
+        </main>
     </div>
-</nav>
-
-<div class="d-flex">
-
-    <!-- SIDEBAR -->
-    <div class="bg-light sidebar p-3" style="width: 260px; min-height: 100vh;">
-        <ul class="nav flex-column">
-
-            <li class="nav-item">
-                <a href="{{ url_for('manager.dashboard') }}" 
-                   class="nav-link sidebar-item {% if '/manager/dashboard' in request.path %}active{% endif %}">
-                   Dashboard
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="{{ url_for('manager.profile') }}"
-                   class="nav-link sidebar-item {% if '/manager/profile' in request.path %}active{% endif %}">
-                   Profile
-                </a>
-            </li>
-            
-            <li class="nav-item">
-    <a href="{{ url_for('manager_team_bp.team_page') }}"
-       class="nav-link sidebar-item {% if '/manager/team' in request.path %}active{% endif %}">
-       My Reportees
-    </a>
-</li>
-
-
-            <li class="nav-item">
-                <a href="{{ url_for('manager_attendance_bp.attendance_page') }}"
-                   class="nav-link sidebar-item {% if '/manager/attendance' in request.path %}active{% endif %}">
-                   Attendance
-                </a>
-            </li>
-
-            <li class="nav-item">
-    <a href="{{ url_for('manager_leaves.leave_management') }}"
-       class="nav-link sidebar-item 
-       {% if request.path.startswith('/manager/leaves') %}active{% endif %}"> 
-        Leave Management
-    </a>
-</li>
-            <li class="nav-item">
-    <a href="{{ url_for('manager_payroll.payslip_page') }}"
-       class="nav-link sidebar-item 
-       {% if request.path.startswith('/manager/payroll') %}active{% endif %}">
-        <i class="bi bi-file-earmark-pdf"></i> Download Payslip
-    </a>
-</li>
-        </ul>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <div class="p-4" style="width: 100%;">
-        {% block content %}{% endblock %}
-    </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

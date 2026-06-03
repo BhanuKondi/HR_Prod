@@ -1,57 +1,99 @@
 {% extends "admin/admin_base.html" %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold">Employees</h2>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
-        + Add Employee
-    </button>
+<div class="workspace-hero">
+    <div class="data-toolbar">
+        <div>
+            <p class="eyebrow mb-2">Workforce Directory</p>
+            <h2 class="fw-bold mb-1">Employees</h2>
+            <p class="text-muted mb-0">Manage employee records, reporting lines, salary setup and account details from one workspace.</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+            <i class="bi bi-person-plus me-2"></i>Add Employee
+        </button>
+    </div>
+
+    <div class="hero-metrics">
+        <div class="hero-metric">
+            <span>Total Employees</span>
+            <strong>{{ summary.total_employees }}</strong>
+        </div>
+        <div class="hero-metric">
+            <span>Active Employees</span>
+            <strong>{{ summary.active_employees }}</strong>
+        </div>
+        <div class="hero-metric">
+            <span>Managers</span>
+            <strong>{{ summary.managers }}</strong>
+        </div>
+    </div>
 </div>
 
-<!-- ================= EMPLOYEE TABLE ================= -->
-<table class="table table-bordered table-striped table-hover" id="employeeTable">
-    <thead class="table-light">
-        <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Department</th>
-            <th>Join Date</th>
-            <th>Status</th>
-            <th width="160">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for emp in employees %}
-        <tr>
-            <td>{{ emp.emp_code }}</td>
-            <td>{{ emp.first_name }} {{ emp.last_name }}</td>
-            <td>{{ emp.work_email }}</td>
-            <td>{{ emp.department }}</td>
-            <td>{{ emp.date_of_joining }}</td>
-            <td>
-                <span class="badge {% if emp.status == 'Active' %}bg-success{% elif emp.status == 'Inactive' %}bg-secondary{% else %}bg-danger{% endif %}">{{ emp.status }}</span>
-            </td>
-            <td>
-                <button class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#viewEmployeeModal" onclick="openViewEmployee({{ emp.id }})">View</button>
-                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editEmployeeModal" onclick="openEditEmployee({{ emp.id }})">Edit</button>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="section-card">
+    <div class="data-toolbar">
+        <div>
+            <h5 class="mb-1">Employee Directory</h5>
+            <p class="text-muted mb-0">Open any employee record to review profile, salary and bank account information.</p>
+        </div>
+        <span class="info-chip"><i class="bi bi-people"></i> {{ employees|length }} records</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped table-hover" id="employeeTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                    <th>Join Date</th>
+                    <th>Status</th>
+                    <th width="160">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td>{{ emp.emp_code }}</td>
+                    <td>
+                        <div class="fw-semibold">{{ emp.first_name }} {{ emp.last_name }}</div>
+                        <div class="small text-muted">{{ emp.job_title or "Role not set" }}</div>
+                    </td>
+                    <td>{{ emp.work_email }}</td>
+                    <td>{{ emp.department or "-" }}</td>
+                    <td>{{ emp.date_of_joining }}</td>
+                    <td>
+                        <span class="badge {% if emp.status == 'Active' %}bg-success{% elif emp.status == 'Inactive' %}bg-secondary{% else %}bg-danger{% endif %}">{{ emp.status }}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewEmployeeModal" onclick="openViewEmployee({{ emp.id }})">View</button>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editEmployeeModal" onclick="openEditEmployee({{ emp.id }})">Edit</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
 <!-- ================= ADD EMPLOYEE MODAL ================= -->
-<div class="modal fade" id="addEmployeeModal" tabindex="-1">
+<div class="modal fade" id="addEmployeeModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
       <form id="addEmployeeForm" action="/admin/employees/add" method="POST">
-        <div class="modal-header">
+        <div class="modal-header modal-header-brand">
           <h5 class="modal-title fw-bold">Add Employee</h5>
-          <button class="btn-close" data-bs-dismiss="modal"></button>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
-          <ul class="nav nav-tabs mb-3">
+        <div class="modal-body modal-workspace">
+          <div class="modal-intro">
+            <h6>Create a new employee record</h6>
+            <p>Capture profile, compensation, and account details in one guided flow.</p>
+          </div>
+
+          <ul class="nav nav-tabs employee-modal-tabs">
             <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#addBasicTab">Basic Details</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#addSalaryTab">Salary</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#addAccountTab">Account</button></li>
@@ -61,163 +103,199 @@
 
             <!-- BASIC DETAILS -->
             <div class="tab-pane fade show active" id="addBasicTab">
-              <div class="row g-3">
-                <div class="col-md-6"><label>Employee Code</label><input name="emp_code" class="form-control" required></div>
-                <div class="col-md-6"><label>Email</label><input name="work_email" type="email" class="form-control" required></div>
-                <div class="col-md-6"><label>First Name</label><input name="first_name" class="form-control" required></div>
-                <div class="col-md-6"><label>Last Name</label><input name="last_name" class="form-control" required></div>
-                <div class="col-md-6"><label>Phone</label><input name="phone" class="form-control"></div>
-                <div class="col-md-6"><label>Department</label><input name="department" class="form-control"></div>
-                <div class="col-md-6"><label>Job Title</label><input name="job_title" class="form-control"></div>
-                <div class="col-md-6"><label>Date of Joining</label><input name="date_of_joining" type="date" class="form-control" required></div>
-                <div class="col-md-6"><label>Role</label>
-                  <select name="role_id" class="form-control">
-                    <option value="1">Admin</option>
-                    <option value="2">Manager</option>
-                    <option value="3">Employee</option>
-                  </select>
+              <div class="modal-pane-card">
+                <div class="modal-pane-head">
+                  <div>
+                    <h6>Profile setup</h6>
+                    <p>Start with identity, organization, reporting line, and initial access.</p>
+                  </div>
+                  <span class="modal-badge-note"><i class="bi bi-person-badge"></i> Required details first</span>
                 </div>
-                <div class="col-md-6">
-  <label>Manager</label>
-  <select name="manager_id" class="form-control">
-    <option value="">-- Select Manager --</option>
-    {% for mgr in managers %}
-      <option value="{{ mgr.id }}">
-        {{ mgr.first_name }} {{ mgr.last_name }}
-      </option>
-    {% endfor %}
-  </select>
-</div>
+                <p class="form-section-label">Employee Identity</p>
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label">Employee Code</label><input name="emp_code" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">Email</label><input name="work_email" type="email" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">First Name</label><input name="first_name" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">Last Name</label><input name="last_name" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">Phone</label><input name="phone" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">Department</label><input name="department" class="form-control"></div>
+                </div>
 
-                <div class="col-md-6"><label>Temp Password</label><input name="password" class="form-control" required></div>
-              </div>
-              <div class="text-end mt-3">
-                <button type="button" class="btn btn-primary" onclick="nextTab('addSalaryTab')">Save & Next →</button>
+                <p class="form-section-label mt-4">Role And Reporting</p>
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label">Job Title</label><input name="job_title" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">Date of Joining</label><input name="date_of_joining" type="date" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">Role</label>
+                    <select name="role_id" class="form-select">
+                    {% for role in roles %}
+                    <option value="{{ role.id }}">{{ role.name }}</option>
+                    {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Manager</label>
+                    <select name="manager_id" class="form-select">
+                      <option value="">-- Select Manager --</option>
+                      {% for mgr in managers %}
+                      <option value="{{ mgr.id }}">
+                        {{ mgr.first_name }} {{ mgr.last_name }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-6"><label class="form-label">Temporary Password</label><input name="password" class="form-control" required></div>
+                </div>
+
+                <div class="modal-footer-strip">
+                  <p class="modal-footer-copy">Salary setup comes next, so HR can finish the onboarding record in one pass.</p>
+                  <button type="button" class="btn btn-primary" onclick="nextTab('addSalaryTab')">Continue To Salary</button>
+                </div>
               </div>
             </div>
 
             <!-- SALARY -->
             <div class="tab-pane fade" id="addSalaryTab">
-              <div class="row g-3">
-                <div class="col-md-6"><label>Employee Salary (CTC)</label><input type="number" id="addAnnualCTC" name="ctc" class="form-control" required></div>
-              </div>
+              <div class="modal-pane-card">
+                <div class="modal-pane-head">
+                  <div>
+                    <h6>Compensation setup</h6>
+                    <p>Define the annual CTC first, then review how each component gets distributed.</p>
+                  </div>
+                  <span class="modal-badge-note"><i class="bi bi-cash-coin"></i> Live totals update automatically</span>
+                </div>
 
-              <!-- Earnings -->
-              <h6 class="mt-3 fw-bold">Earnings</h6>
-              <div class="table-responsive">
-                <table class="table table-bordered">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Component</th>
-                      <th>Calculation Type %</th>
-                      <th>Monthly</th>
-                      <th>Annual</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Basic</td>
-                      <td><input class="pct form-control" value="50" name="basic_percent"></td>
-      
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                    <tr>
-                      <td>Fixed Allowance</td>
-                      <td><input class="pct form-control" value="50" name="fixed_allowance"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                    <tr>
-                      <td>House Rent Allowance</td>
-                      <td><input class="pct form-control" value="20" name="hra_percent"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <div class="salary-input-highlight mb-3">
+                  <label class="form-label">Employee Salary (CTC)</label>
+                  <input type="number" id="addAnnualCTC" name="ctc" class="form-control" required>
+                </div>
 
-              <!-- Reimbursements -->
-              <h6 class="mt-3 fw-bold">Reimbursements</h6>
-              <div class="table-responsive">
-                <table class="table table-bordered">
-                  <tbody>
-                    <tr>
-                      <td>Medical Reimbursement</td>
-                      <td><input class="pct form-control" value="10" name="medical_fixed"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <div class="salary-panel">
+                  <h6>Earnings</h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Component</th>
+                          <th>Calculation Type %</th>
+                          <th>Monthly</th>
+                          <th>Annual</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Basic</td>
+                          <td><input class="pct form-control" value="50" name="basic_percent"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                        <tr>
+                          <td>Fixed Allowance</td>
+                          <td><input class="pct form-control" value="50" name="fixed_allowance"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                        <tr>
+                          <td>House Rent Allowance</td>
+                          <td><input class="pct form-control" value="20" name="hra_percent"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-              <!-- Flexible Benefits -->
-              <h6 class="mt-3 fw-bold">Flexible Benefit Plan Components</h6>
-              <div class="table-responsive">
-                <table class="table table-bordered">
-                  <tbody>
-                    <tr>
-                      <td>Driver Reimbursement</td>
-                      <td><input class="pct form-control" value="10" name="driver_reimbursement"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <div class="salary-panel">
+                  <h6>Reimbursements</h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered">
+                      <tbody>
+                        <tr>
+                          <td>Medical Reimbursement</td>
+                          <td><input class="pct form-control" value="10" name="medical_fixed"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-              <!-- Deductions -->
-              <h6 class="mt-3 fw-bold">Deductions</h6>
-              <div class="table-responsive">
-                <table class="table table-bordered">
-                  <tbody>
-                    <tr>
-                      <td>EPF Contribution</td>
-                      <td><input class="pct form-control" value="12" name="epf_percent"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <!-- ===== COST TO COMPANY ===== -->
-<div class="border p-3 rounded bg-light mt-3">
-  <h6 class="fw-bold mb-2">Cost to Company</h6>
+                <div class="salary-panel">
+                  <h6>Flexible Benefit Plan Components</h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered">
+                      <tbody>
+                        <tr>
+                          <td>Driver Reimbursement</td>
+                          <td><input class="pct form-control" value="10" name="driver_reimbursement"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-  <div class="row">
-    <div class="col-md-6">
-      Monthly: <strong class="ctc-monthly-text">0</strong>
-    </div>
-    <div class="col-md-6">
-      Annual: <strong class="ctc-annual-text">0</strong>
-    </div>
-  </div>
+                <div class="salary-panel">
+                  <h6>Deductions</h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered">
+                      <tbody>
+                        <tr>
+                          <td>EPF Contribution</td>
+                          <td><input class="pct form-control" value="12" name="epf_percent"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-  <!-- values sent to backend -->
-  <input type="hidden" name="ctc_monthly" class="ctc-monthly">
-  <input type="hidden" name="ctc_annual" class="ctc-annual">
-</div>
+                <div class="ctc-summary-card mt-3">
+                  <h6 class="fw-bold mb-3">Cost To Company</h6>
+                  <div class="ctc-summary-grid">
+                    <div class="ctc-summary-value">
+                      <span>Monthly Total</span>
+                      <strong class="ctc-monthly-text">0</strong>
+                    </div>
+                    <div class="ctc-summary-value">
+                      <span>Annual Total</span>
+                      <strong class="ctc-annual-text">0</strong>
+                    </div>
+                  </div>
+                  <input type="hidden" name="ctc_monthly" class="ctc-monthly">
+                  <input type="hidden" name="ctc_annual" class="ctc-annual">
+                </div>
 
-
-              <div class="d-flex justify-content-between mt-3">
-                <button type="button" class="btn btn-secondary" onclick="nextTab('addBasicTab')">← Back</button>
-                <button type="button" class="btn btn-primary" onclick="nextTab('addAccountTab')">Save & Next →</button>
+                <div class="modal-footer-strip">
+                  <button type="button" class="btn btn-outline-secondary" onclick="nextTab('addBasicTab')">Back To Profile</button>
+                  <button type="button" class="btn btn-primary" onclick="nextTab('addAccountTab')">Continue To Account</button>
+                </div>
               </div>
             </div>
 
             <!-- ACCOUNT -->
             <div class="tab-pane fade" id="addAccountTab">
-              <div class="row g-3">
-                <div class="col-md-6"><label>Bank Name</label><input name="bank_name" class="form-control"></div>
-                <div class="col-md-6"><label>Account Number</label><input name="account_number" class="form-control"></div>
-                <div class="col-md-6"><label>IFSC</label><input name="ifsc_code" class="form-control"></div>
-                <div class="col-md-6"><label>Account Holder</label><input name="account_holder_name" class="form-control"></div>
-              </div>
-              <div class="d-flex justify-content-between mt-3">
-                <button type="button" class="btn btn-secondary" onclick="nextTab('addSalaryTab')">← Back</button>
-                <button type="submit" class="btn btn-success">Save Employee</button>
+              <div class="modal-pane-card">
+                <div class="modal-pane-head">
+                  <div>
+                    <h6>Account information</h6>
+                    <p>Capture payout details before saving the employee record.</p>
+                  </div>
+                  <span class="modal-badge-note"><i class="bi bi-bank"></i> Finance-ready setup</span>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label">Bank Name</label><input name="bank_name" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">Account Number</label><input name="account_number" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">IFSC</label><input name="ifsc_code" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">Account Holder</label><input name="account_holder_name" class="form-control"></div>
+                </div>
+                <div class="modal-footer-strip">
+                  <button type="button" class="btn btn-outline-secondary" onclick="nextTab('addSalaryTab')">Back To Salary</button>
+                  <button type="submit" class="btn btn-success">Save Employee</button>
+                </div>
               </div>
             </div>
      
@@ -230,15 +308,20 @@
 </div>
 
 <!-- ================= VIEW EMPLOYEE MODAL ================= -->
-<div class="modal fade" id="viewEmployeeModal" tabindex="-1">
+<div class="modal fade" id="viewEmployeeModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header modal-header-brand">
         <h5 class="modal-title fw-bold">View Employee</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
-        <ul class="nav nav-tabs mb-3">
+      <div class="modal-body modal-workspace">
+        <div class="modal-intro">
+          <h6>Employee record overview</h6>
+          <p>Review profile, compensation, and bank details without leaving the directory.</p>
+        </div>
+
+        <ul class="nav nav-tabs employee-modal-tabs">
           <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#viewBasicTab">Basic Details</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#viewSalaryTab">Salary</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#viewAccountTab">Account</button></li>
@@ -248,118 +331,146 @@
 
           <!-- BASIC -->
           <div class="tab-pane fade show active" id="viewBasicTab">
-            <div class="row g-3">
-              <div class="col-md-6"><label>Employee Code</label><input class="form-control" id="viewEmpCode" readonly></div>
-              <div class="col-md-6"><label>Email</label><input class="form-control" id="viewWorkEmail" readonly></div>
-              <div class="col-md-6"><label>First Name</label><input class="form-control" id="viewFirstName" readonly></div>
-              <div class="col-md-6"><label>Last Name</label><input class="form-control" id="viewLastName" readonly></div>
-              <div class="col-md-6"><label>Phone</label><input class="form-control" id="viewPhone" readonly></div>
-              <div class="col-md-6"><label>Department</label><input class="form-control" id="viewDepartment" readonly></div>
-              <div class="col-md-6"><label>Job Title</label><input class="form-control" id="viewJobTitle" readonly></div>
-              <div class="col-md-6"><label>Date of Joining</label><input class="form-control" id="viewDateJoining" readonly></div>
-              <div class="col-md-6"><label>Role</label><input class="form-control" id="viewRole" readonly></div>
-              <div class="col-md-6">
-  <label>Manager</label>
-  <input class="form-control" id="viewManager" readonly>
-</div>
-
+            <div class="modal-pane-card readonly-grid">
+              <div class="modal-pane-head">
+                <div>
+                  <h6>Profile details</h6>
+                  <p>A read-only view of the employee's organizational and access information.</p>
+                </div>
+                <span class="modal-badge-note"><i class="bi bi-eye"></i> View only</span>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Employee Code</label><input class="form-control" id="viewEmpCode" readonly></div>
+                <div class="col-md-6"><label class="form-label">Email</label><input class="form-control" id="viewWorkEmail" readonly></div>
+                <div class="col-md-6"><label class="form-label">First Name</label><input class="form-control" id="viewFirstName" readonly></div>
+                <div class="col-md-6"><label class="form-label">Last Name</label><input class="form-control" id="viewLastName" readonly></div>
+                <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" id="viewPhone" readonly></div>
+                <div class="col-md-6"><label class="form-label">Department</label><input class="form-control" id="viewDepartment" readonly></div>
+                <div class="col-md-6"><label class="form-label">Job Title</label><input class="form-control" id="viewJobTitle" readonly></div>
+                <div class="col-md-6"><label class="form-label">Date of Joining</label><input class="form-control" id="viewDateJoining" readonly></div>
+                <div class="col-md-6"><label class="form-label">Role</label><input class="form-control" id="viewRole" readonly></div>
+                <div class="col-md-6"><label class="form-label">Manager</label><input class="form-control" id="viewManager" readonly></div>
+              </div>
             </div>
           </div>
 
           <!-- SALARY -->
           <div class="tab-pane fade" id="viewSalaryTab">
-            <div class="row g-3">
-              <div class="col-md-6"><label>CTC</label><input class="form-control" id="viewCTC" readonly></div>
-            </div>
+            <div class="modal-pane-card readonly-grid">
+              <div class="modal-pane-head">
+                <div>
+                  <h6>Salary details</h6>
+                  <p>Compensation is grouped below so HR can scan the package quickly.</p>
+                </div>
+                <span class="modal-badge-note"><i class="bi bi-receipt"></i> Compensation breakdown</span>
+              </div>
+              <div class="salary-input-highlight mb-3">
+                <label class="form-label">CTC</label>
+                <input class="form-control" id="viewCTC" readonly>
+              </div>
 
-            <!-- Earnings -->
-            <h6 class="mt-3 fw-bold">Earnings</h6>
-            <div class="table-responsive">
-              <table class="table table-bordered" id="viewEarningsTable">
-                <thead class="table-light">
-                  <tr>
-                    <th>Component</th>
-                    <th>Calculation Type</th>
-                    <th>Monthly</th>
-                    <th>Annual</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Basic</td>
-                    <td><input class="form-control" readonly id="viewBasicCalc"></td>
-                    <td><input class="form-control" readonly id="viewBasicMonthly"></td>
-                    <td><input class="form-control" readonly id="viewBasicAnnual"></td>
-                  </tr>
-                  <tr>
-                    <td>Fixed Allowance</td>
-                    <td><input class="form-control" readonly id="viewFixedAllowanceCalc"></td>
-                    <td><input class="form-control" readonly id="viewFixedAllowanceMonthly"></td>
-                    <td><input class="form-control" readonly id="viewFixedAllowanceAnnual"></td>
-                  </tr>
-                  <tr>
-                    <td>HRA</td>
-                    <td><input class="form-control" readonly id="viewHRAcalc"></td>
-                    <td><input class="form-control" readonly id="viewHRAMonthly"></td>
-                    <td><input class="form-control" readonly id="viewHRAAnnual"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+              <div class="salary-panel">
+                <h6>Earnings</h6>
+                <div class="table-responsive">
+                  <table class="table table-bordered" id="viewEarningsTable">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Component</th>
+                        <th>Calculation Type</th>
+                        <th>Monthly</th>
+                        <th>Annual</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Basic</td>
+                        <td><input class="form-control" readonly id="viewBasicCalc"></td>
+                        <td><input class="form-control" readonly id="viewBasicMonthly"></td>
+                        <td><input class="form-control" readonly id="viewBasicAnnual"></td>
+                      </tr>
+                      <tr>
+                        <td>Fixed Allowance</td>
+                        <td><input class="form-control" readonly id="viewFixedAllowanceCalc"></td>
+                        <td><input class="form-control" readonly id="viewFixedAllowanceMonthly"></td>
+                        <td><input class="form-control" readonly id="viewFixedAllowanceAnnual"></td>
+                      </tr>
+                      <tr>
+                        <td>HRA</td>
+                        <td><input class="form-control" readonly id="viewHRAcalc"></td>
+                        <td><input class="form-control" readonly id="viewHRAMonthly"></td>
+                        <td><input class="form-control" readonly id="viewHRAAnnual"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-            <!-- Reimbursements -->
-            <h6 class="mt-3 fw-bold">Reimbursements</h6>
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <tbody>
-                  <tr>
-                    <td>Medical Reimbursement</td>
-                    <td><input class="form-control" readonly id="viewMedicalReim"></td>
-                    <td><input class="form-control" readonly id="viewMedicalMonthly"></td>
-                    <td><input class="form-control" readonly id="viewMedicalAnnual"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+              <div class="salary-panel">
+                <h6>Reimbursements</h6>
+                <div class="table-responsive">
+                  <table class="table table-bordered">
+                    <tbody>
+                      <tr>
+                        <td>Medical Reimbursement</td>
+                        <td><input class="form-control" readonly id="viewMedicalReim"></td>
+                        <td><input class="form-control" readonly id="viewMedicalMonthly"></td>
+                        <td><input class="form-control" readonly id="viewMedicalAnnual"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-            <!-- Flexible Benefits -->
-            <h6 class="mt-3 fw-bold">Flexible Benefit Plan Components</h6>
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <tbody>
-                  <tr>
-                    <td>Driver Reimbursement</td>
-                    <td><input class="form-control" readonly id="viewDriverReim"></td>
-                    <td><input class="form-control" readonly id="viewDriverMonthly"></td>
-                    <td><input class="form-control" readonly id="viewDriverAnnual"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+              <div class="salary-panel">
+                <h6>Flexible Benefit Plan Components</h6>
+                <div class="table-responsive">
+                  <table class="table table-bordered">
+                    <tbody>
+                      <tr>
+                        <td>Driver Reimbursement</td>
+                        <td><input class="form-control" readonly id="viewDriverReim"></td>
+                        <td><input class="form-control" readonly id="viewDriverMonthly"></td>
+                        <td><input class="form-control" readonly id="viewDriverAnnual"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-            <!-- Deductions -->
-            <h6 class="mt-3 fw-bold">Deductions</h6>
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <tbody>
-                  <tr>
-                    <td>EPF Contribution</td>
-                    <td><input class="form-control" readonly id="viewEPFcalc"></td>
-                    <td><input class="form-control" readonly id="viewEPFMonthly"></td>
-                    <td><input class="form-control" readonly id="viewEPFAnnual"></td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="salary-panel">
+                <h6>Deductions</h6>
+                <div class="table-responsive">
+                  <table class="table table-bordered">
+                    <tbody>
+                      <tr>
+                        <td>EPF Contribution</td>
+                        <td><input class="form-control" readonly id="viewEPFcalc"></td>
+                        <td><input class="form-control" readonly id="viewEPFMonthly"></td>
+                        <td><input class="form-control" readonly id="viewEPFAnnual"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- ACCOUNT -->
           <div class="tab-pane fade" id="viewAccountTab">
-            <div class="row g-3">
-              <div class="col-md-6"><label>Bank Name</label><input class="form-control" id="viewBankName" readonly></div>
-              <div class="col-md-6"><label>Account Number</label><input class="form-control" id="viewAccountNumber" readonly></div>
-              <div class="col-md-6"><label>IFSC</label><input class="form-control" id="viewIFSC" readonly></div>
-              <div class="col-md-6"><label>Account Holder</label><input class="form-control" id="viewAccountHolder" readonly></div>
+            <div class="modal-pane-card readonly-grid">
+              <div class="modal-pane-head">
+                <div>
+                  <h6>Bank account</h6>
+                  <p>Finance details are shown here in a compact read-only layout.</p>
+                </div>
+                <span class="modal-badge-note"><i class="bi bi-bank2"></i> Payout details</span>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Bank Name</label><input class="form-control" id="viewBankName" readonly></div>
+                <div class="col-md-6"><label class="form-label">Account Number</label><input class="form-control" id="viewAccountNumber" readonly></div>
+                <div class="col-md-6"><label class="form-label">IFSC</label><input class="form-control" id="viewIFSC" readonly></div>
+                <div class="col-md-6"><label class="form-label">Account Holder</label><input class="form-control" id="viewAccountHolder" readonly></div>
+              </div>
             </div>
           </div>
 
@@ -376,12 +487,17 @@
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
       <form id="editEmployeeForm" action="/admin/employees/edit" method="POST">
-        <div class="modal-header">
+        <div class="modal-header modal-header-brand">
           <h5 class="modal-title fw-bold">Edit Employee</h5>
-          <button class="btn-close" data-bs-dismiss="modal"></button>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
-          <ul class="nav nav-tabs mb-3">
+        <div class="modal-body modal-workspace">
+          <div class="modal-intro">
+            <h6>Update employee details</h6>
+            <p>Make profile, salary, and account changes from one structured editing flow.</p>
+          </div>
+
+          <ul class="nav nav-tabs employee-modal-tabs">
             <li class="nav-item"><button type="button" class="nav-link active" data-bs-toggle="tab" data-bs-target="#editBasicTab">Basic Details</button></li>
             <li class="nav-item"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#editSalaryTab">Salary</button></li>
             <li class="nav-item"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#editAccountTab">Account</button></li>
@@ -391,171 +507,207 @@
 
             <!-- BASIC DETAILS -->
             <div class="tab-pane fade show active" id="editBasicTab">
-              <div class="row g-3">
-                <input type="hidden" name="emp_id" id="editEmpId">
-                <div class="col-md-6"><label>Employee Code</label><input name="emp_code" id="editEmpCode" class="form-control" required></div>
-                <div class="col-md-6"><label>Email</label><input name="work_email" id="editWorkEmail" type="email" class="form-control" required></div>
-                <div class="col-md-6"><label>First Name</label><input name="first_name" id="editFirstName" class="form-control" required></div>
-                <div class="col-md-6"><label>Last Name</label><input name="last_name" id="editLastName" class="form-control" required></div>
-                <div class="col-md-6"><label>Phone</label><input name="phone" id="editPhone" class="form-control"></div>
-                <div class="col-md-6"><label>Department</label><input name="department" id="editDepartment" class="form-control"></div>
-                <div class="col-md-6"><label>Job Title</label><input name="job_title" id="editJobTitle" class="form-control"></div>
-                <div class="col-md-6"><label>Date of Joining</label><input name="date_of_joining" id="editDateJoining" type="date" class="form-control" required></div>
-                <div class="col-md-6"><label>Role</label>
-                  <select name="role_id" id="editRoleId" class="form-control">
-                    <option value="1">Admin</option>
-                    <option value="2">Manager</option>
-                    <option value="3">Employee</option>
-                  </select>
+              <div class="modal-pane-card">
+                <div class="modal-pane-head">
+                  <div>
+                    <h6>Edit profile setup</h6>
+                    <p>Adjust core employment details, reporting structure, and current status.</p>
+                  </div>
+                  <span class="modal-badge-note"><i class="bi bi-pencil-square"></i> Changes apply immediately</span>
                 </div>
-                <div class="col-md-6">
-  <label>Manager</label>
- <select name="manager_emp_id" id="editManagerId" class="form-control">
+                <input type="hidden" name="emp_id" id="editEmpId">
+                <p class="form-section-label">Employee Identity</p>
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label">Employee Code</label><input name="emp_code" id="editEmpCode" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">Email</label><input name="work_email" id="editWorkEmail" type="email" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">First Name</label><input name="first_name" id="editFirstName" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">Last Name</label><input name="last_name" id="editLastName" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">Phone</label><input name="phone" id="editPhone" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">Department</label><input name="department" id="editDepartment" class="form-control"></div>
+                </div>
 
-    <option value="">-- Select Manager --</option>
-    {% for mgr in managers %}
-      <option value="{{ mgr.id }}">
-        {{ mgr.first_name }} {{ mgr.last_name }}
-      </option>
-    {% endfor %}
-  </select>
-</div>
+                <p class="form-section-label mt-4">Role And Reporting</p>
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label">Job Title</label><input name="job_title" id="editJobTitle" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">Date of Joining</label><input name="date_of_joining" id="editDateJoining" type="date" class="form-control" required></div>
+                  <div class="col-md-6"><label class="form-label">Role</label>
+                    <select name="role_id" id="editRoleId" class="form-select">
+                    {% for role in roles %}
+                    <option value="{{ role.id }}">{{ role.name }}</option>
+                    {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Manager</label>
+                    <select name="manager_emp_id" id="editManagerId" class="form-select">
+                      <option value="">-- Select Manager --</option>
+                      {% for mgr in managers %}
+                      <option value="{{ mgr.id }}">
+                        {{ mgr.first_name }} {{ mgr.last_name }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Status</label>
+                    <select name="status" id="editStatus" class="form-select">
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                      <option value="Terminated">Terminated</option>
+                    </select>
+                  </div>
+                </div>
 
-                <div class="col-md-6">
-  <label>Status</label>
-  <select name="status" id="editStatus" class="form-control">
-    <option value="Active">Active</option>
-    <option value="Inactive">Inactive</option>
-    <option value="Terminated">Terminated</option>
-  </select>
-</div>
-
-              </div>
-              <div class="text-end mt-3">
-                <button type="button" class="btn btn-primary" onclick="nextTab('editSalaryTab')">Save & Next →</button>
+                <div class="modal-footer-strip">
+                  <p class="modal-footer-copy">Once profile changes are done, move to salary and account details if needed.</p>
+                  <button type="button" class="btn btn-primary" onclick="nextTab('editSalaryTab')">Continue To Salary</button>
+                </div>
               </div>
             </div>
 
             <!-- SALARY -->
             <div class="tab-pane fade" id="editSalaryTab">
-              <div class="row g-3">
-                <div class="col-md-6"><label>Employee Salary (CTC)</label><input type="number" id="editAnnualCTC" name="ctc" class="form-control" required></div>
-              </div>
+              <div class="modal-pane-card">
+                <div class="modal-pane-head">
+                  <div>
+                    <h6>Edit compensation</h6>
+                    <p>Update CTC and review how the package is split across earnings and deductions.</p>
+                  </div>
+                  <span class="modal-badge-note"><i class="bi bi-graph-up-arrow"></i> Totals recalculate live</span>
+                </div>
 
-              <!-- Earnings -->
-              <h6 class="mt-3 fw-bold">Earnings</h6>
-              <div class="table-responsive">
-                <table class="table table-bordered">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Component</th>
-                      <th>Calculation Type</th>
-                      <th>Monthly</th>
-                      <th>Annual</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Basic</td>
-                      <td><input class="pct form-control" value="50" name="basic_percent"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                    <tr>
-                      <td>Fixed Allowance</td>
-                      <td><input class="pct form-control" value="10" name="fixed_allowance"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                    <tr>
-                      <td>House Rent Allowance</td>
-                      <td><input class="pct form-control" value="10" name="hra_percent"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <div class="salary-input-highlight mb-3">
+                  <label class="form-label">Employee Salary (CTC)</label>
+                  <input type="number" id="editAnnualCTC" name="ctc" class="form-control" required>
+                </div>
 
-              <!-- Reimbursements -->
-              <h6 class="mt-3 fw-bold">Reimbursements</h6>
-              <div class="table-responsive">
-                <table class="table table-bordered">
-                  <tbody>
-                    <tr>
-                      <td>Medical Reimbursement</td>
-                      <td><input class="pct form-control" value="10" name="medical_fixed"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <div class="salary-panel">
+                  <h6>Earnings</h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Component</th>
+                          <th>Calculation Type</th>
+                          <th>Monthly</th>
+                          <th>Annual</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Basic</td>
+                          <td><input class="pct form-control" value="50" name="basic_percent"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                        <tr>
+                          <td>Fixed Allowance</td>
+                          <td><input class="pct form-control" value="10" name="fixed_allowance"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                        <tr>
+                          <td>House Rent Allowance</td>
+                          <td><input class="pct form-control" value="10" name="hra_percent"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-              <!-- Flexible Benefits -->
-              <h6 class="mt-3 fw-bold">Flexible Benefit Plan Components</h6>
-              <div class="table-responsive">
-                <table class="table table-bordered">
-                  <tbody>
-                    <tr>
-                      <td>Driver Reimbursement</td>
-                      <td><input class="pct form-control" value="10" name="driver_reimbursement"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <div class="salary-panel">
+                  <h6>Reimbursements</h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered">
+                      <tbody>
+                        <tr>
+                          <td>Medical Reimbursement</td>
+                          <td><input class="pct form-control" value="10" name="medical_fixed"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-              <!-- Deductions -->
-              <h6 class="mt-3 fw-bold">Deductions</h6>
-              <div class="table-responsive">
-                <table class="table table-bordered">
-                  <tbody>
-                    <tr>
-                      <td>EPF Contribution</td>
-                      <td><input class="pct form-control" value="12" name="epf_percent"></td>
-                      <td><input class="monthly form-control" readonly></td>
-                      <td><input class="annual form-control" readonly></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <!-- ===== COST TO COMPANY ===== -->
-<div class="border p-3 rounded bg-light mt-3">
-  <h6 class="fw-bold mb-2">Cost to Company</h6>
+                <div class="salary-panel">
+                  <h6>Flexible Benefit Plan Components</h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered">
+                      <tbody>
+                        <tr>
+                          <td>Driver Reimbursement</td>
+                          <td><input class="pct form-control" value="10" name="driver_reimbursement"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-  <div class="row">
-    <div class="col-md-6">
-      Monthly: <strong class="ctc-monthly-text">0</strong>
-    </div>
-    <div class="col-md-6">
-      Annual: <strong class="ctc-annual-text">0</strong>
-    </div>
-  </div>
+                <div class="salary-panel">
+                  <h6>Deductions</h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered">
+                      <tbody>
+                        <tr>
+                          <td>EPF Contribution</td>
+                          <td><input class="pct form-control" value="12" name="epf_percent"></td>
+                          <td><input class="monthly form-control" readonly></td>
+                          <td><input class="annual form-control" readonly></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-  <input type="hidden" name="ctc_monthly" class="ctc-monthly">
-  <input type="hidden" name="ctc_annual" class="ctc-annual">
-</div>
+                <div class="ctc-summary-card mt-3">
+                  <h6 class="fw-bold mb-3">Cost To Company</h6>
+                  <div class="ctc-summary-grid">
+                    <div class="ctc-summary-value">
+                      <span>Monthly Total</span>
+                      <strong class="ctc-monthly-text">0</strong>
+                    </div>
+                    <div class="ctc-summary-value">
+                      <span>Annual Total</span>
+                      <strong class="ctc-annual-text">0</strong>
+                    </div>
+                  </div>
+                  <input type="hidden" name="ctc_monthly" class="ctc-monthly">
+                  <input type="hidden" name="ctc_annual" class="ctc-annual">
+                </div>
 
-
-              <div class="d-flex justify-content-between mt-3">
-                <button type="button" class="btn btn-secondary" onclick="nextTab('editBasicTab')">← Back</button>
-                <button type="button" class="btn btn-primary" onclick="nextTab('editAccountTab')">Save & Next →</button>
+                <div class="modal-footer-strip">
+                  <button type="button" class="btn btn-outline-secondary" onclick="nextTab('editBasicTab')">Back To Profile</button>
+                  <button type="button" class="btn btn-primary" onclick="nextTab('editAccountTab')">Continue To Account</button>
+                </div>
               </div>
             </div>
 
             <!-- ACCOUNT -->
             <div class="tab-pane fade" id="editAccountTab">
-              <div class="row g-3">
-                <div class="col-md-6"><label>Bank Name</label><input name="bank_name" id="editBankName" class="form-control"></div>
-                <div class="col-md-6"><label>Account Number</label><input name="account_number" id="editAccountNumber" class="form-control"></div>
-                <div class="col-md-6"><label>IFSC</label><input name="ifsc_code" id="editIFSC" class="form-control"></div>
-                <div class="col-md-6"><label>Account Holder</label><input name="account_holder_name" id="editAccountHolder" class="form-control"></div>
-              </div>
-              <div class="d-flex justify-content-between mt-3">
-                <button type="button" class="btn btn-secondary" onclick="nextTab('editSalaryTab')">← Back</button>
-                <button type="submit" class="btn btn-success">Save Changes</button>
+              <div class="modal-pane-card">
+                <div class="modal-pane-head">
+                  <div>
+                    <h6>Edit account information</h6>
+                    <p>Finalize the employee record by updating payout and banking information.</p>
+                  </div>
+                  <span class="modal-badge-note"><i class="bi bi-shield-check"></i> Final review step</span>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label">Bank Name</label><input name="bank_name" id="editBankName" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">Account Number</label><input name="account_number" id="editAccountNumber" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">IFSC</label><input name="ifsc_code" id="editIFSC" class="form-control"></div>
+                  <div class="col-md-6"><label class="form-label">Account Holder</label><input name="account_holder_name" id="editAccountHolder" class="form-control"></div>
+                </div>
+                <div class="modal-footer-strip">
+                  <button type="button" class="btn btn-outline-secondary" onclick="nextTab('editSalaryTab')">Back To Salary</button>
+                  <button type="submit" class="btn btn-success">Save Changes</button>
+                </div>
               </div>
             </div>
 

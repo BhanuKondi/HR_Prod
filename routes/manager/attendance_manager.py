@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, session, redirect, jsonify, request
-from models.models import Employee
+from flask import Blueprint, jsonify, redirect, render_template, request
 from models.attendance import Attendance, IST
 from models.db import db
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
+from utils.authz import ROLE_MANAGER, get_current_employee, require_roles
  
 # ================= SHIFT CONFIG =================
 SHIFT_START_HOUR = 7  # 7 AM
@@ -14,15 +14,17 @@ manager_attendance_bp = Blueprint(
     __name__,
     url_prefix="/manager/attendance"
 )
+
+
+@manager_attendance_bp.before_request
+def enforce_manager_role():
+    return require_roles(ROLE_MANAGER)
  
 # --------------------------------------------------
 # Helper: fetch logged-in manager
 # --------------------------------------------------
 def current_manager():
-    user_id = session.get("user_id")
-    if not user_id:
-        return None
-    return Employee.query.filter_by(user_id=user_id).first()
+    return get_current_employee()
  
 # --------------------------------------------------
 # Helper: shift date (7 AM → 7 AM)
@@ -49,6 +51,31 @@ def auto_clock_out_after_shift(user_id):
                 log.clock_out = shift_end
                 log.duration_seconds = duration
     db.session.commit()
+
+
+def close_stale_open_sessions(user_id, shift_day):
+    """
+    Defensive cleanup:
+    if any open session exists from older shift dates, close it at its shift_end.
+    This prevents false "already clocked in" blocks when old open rows remain.
+    """
+    stale_logs = Attendance.query.filter(
+        Attendance.user_id == user_id,
+        Attendance.clock_out.is_(None),
+        Attendance.date < shift_day,
+    ).all()
+    updated = False
+    for log in stale_logs:
+        if not log.shift_end or not log.clock_in:
+            continue
+        shift_end = log.shift_end if log.shift_end.tzinfo else log.shift_end.replace(tzinfo=IST)
+        clock_in = log.clock_in if log.clock_in.tzinfo else log.clock_in.replace(tzinfo=IST)
+        duration = int((shift_end - clock_in).total_seconds())
+        log.clock_out = shift_end
+        log.duration_seconds = min(max(duration, 0), MAX_SHIFT_SECONDS)
+        updated = True
+    if updated:
+        db.session.commit()
  
 # --------------------------------------------------
 # Attendance UI Page
@@ -57,7 +84,7 @@ def auto_clock_out_after_shift(user_id):
 def attendance_page():
     mgr = current_manager()
     if not mgr:
-        return redirect("/login")
+        return redirect("/logout")
     auto_clock_out_after_shift(mgr.user_id)
     return render_template("manager/attendance.html", manager=mgr)
  
@@ -104,6 +131,7 @@ def clock_in():
  
     now = datetime.now(IST)
     shift_day = get_shift_date(now)
+    close_stale_open_sessions(mgr.user_id, shift_day)
  
     # Check if already clocked-in
     active = Attendance.query.filter_by(
@@ -112,7 +140,13 @@ def clock_in():
         clock_out=None
     ).first()
     if active:
-        return jsonify({"error": "Already clocked in"}), 400
+        return jsonify({
+            "success": True,
+            "message": "Already clocked in",
+            "log_id": active.id,
+            "active": True,
+            "clock_in": active.clock_in.isoformat() if active.clock_in else None,
+        }), 200
  
     # Count today's records
     record_count = Attendance.query.filter_by(user_id=mgr.user_id, date=shift_day).count()

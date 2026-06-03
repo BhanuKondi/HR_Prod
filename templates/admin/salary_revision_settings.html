@@ -1,0 +1,32 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+  <div>
+    <p class="eyebrow mb-2">Payroll Control</p>
+    <h2 class="fw-bold mb-1">Salary Revision Settings</h2>
+    <p class="text-muted mb-0">Configure the fixed approver who reviews all salary revision requests.</p>
+  </div>
+</div>
+
+<div class="section-card">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label">Fixed Approver</label>
+        <select class="form-select" name="fixed_approver_user_id" required>
+          <option value="">Select approver</option>
+          {% for user in users %}
+          <option value="{{ user.id }}" {% if config.fixed_approver_user_id == user.id %}selected{% endif %}>
+            {{ user.display_name or user.email }} ({{ user.email }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <button class="btn btn-primary w-100" type="submit">Save Settings</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, session, redirect, url_for, jsonify, request
 from models.models import Employee, Leavee, Holiday, db
 from datetime import datetime
+from utils.authz import ROLE_ADMIN, get_current_employee, require_roles
 
 admin_lbp = Blueprint(
     "admin_leaves",
@@ -10,22 +11,12 @@ admin_lbp = Blueprint(
 
 # ---------------- Helper ----------------
 def current_admin():
-    """
-    Returns the Employee object of the current admin based on session.
-    """
-    user_id = session.get("user_id")
-    if not user_id:
-        return None
-    emp = Employee.query.filter_by(user_id=user_id, role_id=1).first()  # role_id=1 → admin
-    return emp
+    return get_current_employee()
 
 # ---------------- BEFORE REQUEST ----------------
 @admin_lbp.before_request
 def check_admin():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-    if session.get('role_id') != 1:  # admin role
-        return "Access denied", 403
+    return require_roles(ROLE_ADMIN)
 
 # ---------------- LEAVE MANAGEMENT PAGE ----------------
 @admin_lbp.route("/leave-management")
@@ -108,10 +99,17 @@ def leave_summary():
     employees = Employee.query.all()
     summary = []
 
-    current_year = datetime.now().year
-    current_month = datetime.now().month
+    today = datetime.now()
+    current_year = today.year
+    current_month = today.month
 
-    TOTAL_CL = (current_month-1) * 0.5   # 🔥 Dynamic CL
+    # Financial year starts in March
+    if current_month >= 3:
+        months_passed = current_month - 2   # March = 1
+    else:
+        months_passed = current_month + 10  # Jan=11, Feb=12
+
+    TOTAL_CL = round(months_passed * 0.5, 2)
     TOTAL_SL = 6
 
     for e in employees:

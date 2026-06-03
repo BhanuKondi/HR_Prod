@@ -1,0 +1,51 @@
+{% extends base_template %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Employee Loans</p>
+        <h2 class="fw-bold mb-1">{{ loan.loan_no }}</h2>
+        <p class="text-muted mb-0">Record loan disbursement, payment reference, and the payroll month when EMI deductions should begin.</p>
+    </div>
+    <div class="hero-metrics">
+        <div class="hero-metric"><span>Employee</span><strong>{{ loan.employee.first_name }} {{ loan.employee.last_name }}</strong></div>
+        <div class="hero-metric"><span>Approved</span><strong>{{ "%.2f"|format(loan.approved_amount or 0) }}</strong></div>
+        <div class="hero-metric"><span>Monthly EMI</span><strong>{{ "%.2f"|format(loan.monthly_installment or 0) }}</strong></div>
+        <div class="hero-metric"><span>Status</span><strong>{{ loan.status.replace("_", " ").title() }}</strong></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="section-card h-100">
+            <h5 class="mb-3">Loan Summary</h5>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Requested Amount</label><input class="form-control" readonly value="{{ "%.2f"|format(loan.requested_amount or 0) }}"></div>
+                <div class="col-md-6"><label class="form-label">Approved Amount</label><input class="form-control" readonly value="{{ "%.2f"|format(loan.approved_amount or 0) }}"></div>
+                <div class="col-md-6"><label class="form-label">Installments</label><input class="form-control" readonly value="{{ loan.total_installments }}"></div>
+                <div class="col-md-6"><label class="form-label">Approved EMI</label><input class="form-control" readonly value="{{ "%.2f"|format(loan.monthly_installment or 0) }}"></div>
+                <div class="col-12"><label class="form-label">Reason</label><textarea class="form-control" rows="4" readonly>{{ loan.reason }}</textarea></div>
+                <div class="col-12"><label class="form-label">Approval Comments</label><textarea class="form-control" rows="3" readonly>{{ loan.approval_comments or '-' }}</textarea></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="section-card">
+            {% if loan.status == 'pending_payment' %}
+            <form action="{{ url_for('account_loans.mark_paid', loan_id=loan.id) }}" method="POST">
+                <label class="form-label">Payment Date</label>
+                <input type="date" class="form-control mb-3" name="payment_date" required>
+                <label class="form-label">Payment Reference</label>
+                <input type="text" class="form-control mb-3" name="payment_reference" placeholder="Transaction ID / voucher / cash entry">
+                <label class="form-label">Repayment Start Month</label>
+                <input type="month" class="form-control mb-3" name="repayment_start" required>
+                <label class="form-label">Finance Comments</label>
+                <textarea class="form-control mb-3" name="finance_comments" rows="3" placeholder="Optional payment note"></textarea>
+                <button type="submit" class="btn btn-primary w-100">Mark As Paid</button>
+            </form>
+            {% else %}
+            <div class="alert alert-light border mb-0">This loan is no longer waiting for payment processing.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

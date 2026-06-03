@@ -1,0 +1,42 @@
+{% extends "admin/admin_base.html" %}
+{% block content %}
+<div class="workspace-hero">
+    <div>
+        <p class="eyebrow mb-2">Accounts Operations</p>
+        <h2 class="fw-bold mb-1">Accounts Settings</h2>
+        <p class="text-muted mb-0">Configure the default approver and approval behavior for office expense and cash requests.</p>
+    </div>
+</div>
+
+<form method="POST" class="section-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="row g-4">
+        <div class="col-md-6">
+            <label class="form-label">Default Approver</label>
+            <select class="form-select" name="default_approver_user_id" required>
+                <option value="">Select approver</option>
+                {% for approver in approvers %}
+                <option value="{{ approver.id }}" {% if config and config.default_approver_user_id == approver.id %}selected{% endif %}>
+                    {% if approver.employee %}
+                        {{ approver.employee.first_name }} {{ approver.employee.last_name }} ({{ approver.email }})
+                    {% else %}
+                        {{ approver.display_name or approver.email }} ({{ approver.email }})
+                    {% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Allow Partial Approval</label>
+            <select class="form-select" name="allow_partial_approval">
+                <option value="true" {% if not config or config.allow_partial_approval %}selected{% endif %}>Yes</option>
+                <option value="false" {% if config and not config.allow_partial_approval %}selected{% endif %}>No</option>
+            </select>
+        </div>
+    </div>
+    <div class="modal-footer-strip mt-4">
+        <p class="modal-footer-copy">These settings apply only to the new Accounts Requests workflow.</p>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </div>
+</form>
+{% endblock %}
